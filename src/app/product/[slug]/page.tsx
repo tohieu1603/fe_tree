@@ -1,58 +1,15 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
-import { Product, Category, ApiResponse } from '@/types';
+import { getProductBySlug, getRelatedProducts } from '@/lib/ssr/products';
+import { getProductCategories } from '@/lib/ssr/categories';
+import { formatPrice, calculateDiscount } from '@/lib/utils';
 import ProductTabs from '@/components/ProductTabs';
 import ProductGallery from '@/components/ProductGallery';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
-
-async function getProduct(slug: string): Promise<Product | null> {
-  try {
-    const res = await fetch(`${API_URL}/api/public/products/${slug}`, { next: { revalidate: 60 } });
-    if (!res.ok) return null;
-    const data: ApiResponse<Product> = await res.json();
-    return data.data;
-  } catch {
-    return null;
-  }
-}
-
-async function getRelatedProducts(slug: string): Promise<Product[]> {
-  try {
-    const res = await fetch(`${API_URL}/api/public/products/${slug}/related`, { next: { revalidate: 60 } });
-    if (!res.ok) return [];
-    const data: ApiResponse<Product[]> = await res.json();
-    return data.data;
-  } catch {
-    return [];
-  }
-}
-
-async function getCategories(): Promise<Category[]> {
-  try {
-    const res = await fetch(`${API_URL}/api/public/categories`, { next: { revalidate: 60 } });
-    if (!res.ok) return [];
-    const data: ApiResponse<Category[]> = await res.json();
-    return data.data.filter(cat => cat.sortOrder >= 10);
-  } catch {
-    return [];
-  }
-}
-
-function formatPrice(price?: number): string {
-  if (!price) return 'Lien he';
-  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
-}
-
-function calculateDiscount(price?: number, originalPrice?: number): number | null {
-  if (!price || !originalPrice || originalPrice <= price) return null;
-  return Math.round(((originalPrice - price) / originalPrice) * 100);
-}
-
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const product = await getProduct(slug);
+  const product = await getProductBySlug(slug);
   if (!product) return { title: 'Khong tim thay san pham' };
 
   return {
@@ -70,7 +27,10 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const [product, categories] = await Promise.all([getProduct(slug), getCategories()]);
+  const [product, categories] = await Promise.all([
+    getProductBySlug(slug),
+    getProductCategories(),
+  ]);
 
   if (!product) notFound();
 
@@ -116,10 +76,8 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         {/* Product Detail */}
         <div className="bg-white rounded-lg p-4 md:p-8 mb-8">
           <div className="grid lg:grid-cols-2 gap-8">
-            {/* Gallery */}
             <ProductGallery images={allImages} productName={product.name} discount={discount} />
 
-            {/* Info */}
             <div>
               {product.category && (
                 <Link href={`/category/${product.category.slug}`} className="text-xs text-amber-700 uppercase tracking-wide">
@@ -128,7 +86,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
               )}
               <h1 className="text-2xl md:text-3xl font-bold text-stone-800 mt-1 mb-4">{product.name}</h1>
 
-              {/* Rating placeholder */}
+              {/* Rating */}
               <div className="flex items-center gap-2 mb-4">
                 <div className="flex text-amber-500">
                   {[1,2,3,4,5].map(i => (
@@ -151,7 +109,6 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
                 )}
               </div>
 
-              {/* Summary */}
               {product.summary && (
                 <p className="text-stone-600 mb-6 leading-relaxed">{product.summary}</p>
               )}
@@ -159,36 +116,11 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
               {/* Specs */}
               <div className="border rounded-lg p-4 mb-6 space-y-3 bg-stone-50">
                 <h3 className="font-semibold text-stone-800 mb-3">Thong tin san pham</h3>
-                {product.sku && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-stone-500">Ma SP:</span>
-                    <span className="font-medium text-stone-700">{product.sku}</span>
-                  </div>
-                )}
-                {product.material && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-stone-500">Chat lieu:</span>
-                    <span className="font-medium text-stone-700">{product.material}</span>
-                  </div>
-                )}
-                {product.dimensions && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-stone-500">Kich thuoc:</span>
-                    <span className="font-medium text-stone-700">{product.dimensions}</span>
-                  </div>
-                )}
-                {product.color && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-stone-500">Mau sac:</span>
-                    <span className="font-medium text-stone-700">{product.color}</span>
-                  </div>
-                )}
-                {product.weight && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-stone-500">Trong luong:</span>
-                    <span className="font-medium text-stone-700">{product.weight} kg</span>
-                  </div>
-                )}
+                {product.sku && <SpecRow label="Ma SP" value={product.sku} />}
+                {product.material && <SpecRow label="Chat lieu" value={product.material} />}
+                {product.dimensions && <SpecRow label="Kich thuoc" value={product.dimensions} />}
+                {product.color && <SpecRow label="Mau sac" value={product.color} />}
+                {product.weight && <SpecRow label="Trong luong" value={`${product.weight} kg`} />}
                 <div className="flex justify-between text-sm">
                   <span className="text-stone-500">Tinh trang:</span>
                   <span className={`font-medium ${(product.stockQuantity || 0) > 0 ? 'text-green-600' : 'text-red-500'}`}>
@@ -199,46 +131,26 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
               {/* Actions */}
               <div className="flex gap-3 mb-6">
-                <a
-                  href="tel:0123456789"
-                  className="flex-1 bg-amber-700 text-white py-3 px-6 rounded-lg font-medium hover:bg-amber-800 transition text-center"
-                >
+                <a href="tel:0123456789" className="flex-1 bg-amber-700 text-white py-3 px-6 rounded-lg font-medium hover:bg-amber-800 transition text-center">
                   Goi ngay: 0123 456 789
                 </a>
-                <a
-                  href="https://zalo.me/0123456789"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-4 py-3 border border-stone-300 rounded-lg hover:border-stone-400 transition flex items-center gap-2"
-                >
-                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.334-.373-.121l-6.869 4.326-2.96-.924c-.64-.203-.658-.64.135-.954l11.566-4.458c.538-.196 1.006.128.832.94z"/>
-                  </svg>
+                <a href="https://zalo.me/0123456789" target="_blank" rel="noopener noreferrer" className="px-4 py-3 border border-stone-300 rounded-lg hover:border-stone-400 transition flex items-center gap-2">
+                  <ZaloIcon />
                   Zalo
                 </a>
               </div>
 
               {/* Trust badges */}
               <div className="grid grid-cols-3 gap-3 text-center text-xs">
-                <div className="bg-stone-50 rounded p-3">
-                  <div className="text-amber-700 font-bold mb-1">100%</div>
-                  <div className="text-stone-500">Thu cong</div>
-                </div>
-                <div className="bg-stone-50 rounded p-3">
-                  <div className="text-amber-700 font-bold mb-1">Bao hanh</div>
-                  <div className="text-stone-500">Tron doi</div>
-                </div>
-                <div className="bg-stone-50 rounded p-3">
-                  <div className="text-amber-700 font-bold mb-1">Mien phi</div>
-                  <div className="text-stone-500">Ship noi thanh</div>
-                </div>
+                <TrustBadge title="100%" subtitle="Thu cong" />
+                <TrustBadge title="Bao hanh" subtitle="Tron doi" />
+                <TrustBadge title="Mien phi" subtitle="Ship noi thanh" />
               </div>
             </div>
           </div>
         </div>
 
-        {/* Product Tabs: Description, Reviews */}
-        <ProductTabs description={product.description} />
+        <ProductTabs description={product.description || ''} />
 
         {/* Related Products */}
         {relatedProducts.length > 0 && (
@@ -246,136 +158,112 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
             <h2 className="text-xl font-bold text-stone-800 mb-6">San Pham Tuong Tu</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {relatedProducts.map((item) => (
-                <Link
-                  key={item.id}
-                  href={`/product/${item.slug}`}
-                  className="group bg-white rounded-lg overflow-hidden border border-stone-200 hover:shadow-md transition"
-                >
-                  <div className="relative aspect-square bg-stone-100">
-                    {item.featuredImage ? (
-                      <Image src={item.featuredImage} alt={item.name} fill className="object-cover group-hover:scale-105 transition duration-300" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <svg className="w-10 h-10 text-stone-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                      </div>
-                    )}
-                  </div>
-                  <div className="p-3">
-                    <h3 className="text-sm font-medium text-stone-800 group-hover:text-amber-700 transition line-clamp-2 mb-1">{item.name}</h3>
-                    <span className="text-amber-700 font-semibold text-sm">{formatPrice(item.price)}</span>
-                  </div>
-                </Link>
+                <ProductCard key={item.id} product={item} />
               ))}
             </div>
           </section>
         )}
       </main>
 
-      {/* Footer */}
-      <footer className="bg-stone-800 text-stone-300 mt-12">
-        <div className="max-w-7xl mx-auto px-4 py-12">
-          <div className="grid md:grid-cols-5 gap-8">
-            {/* About */}
-            <div className="md:col-span-2">
-              <h3 className="text-xl font-bold text-white mb-3">Tree</h3>
-              <p className="text-sm text-stone-400 mb-4 leading-relaxed">
-                Tree chuyen cung cap tuong go dieu khac thu cong, tuong Phat, tuong Di Lac,
-                tuong phong thuy tu cac loai go quy nhu go huong, go trac, go cam lai.
-                Moi san pham la mot tac pham nghe thuat doc nhat.
-              </p>
-              <div className="flex gap-3">
-                <a href="#" className="w-9 h-9 rounded-full bg-stone-700 flex items-center justify-center hover:bg-amber-700 transition">
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M22.675 0h-21.35c-.732 0-1.325.593-1.325 1.325v21.351c0 .731.593 1.324 1.325 1.324h11.495v-9.294h-3.128v-3.622h3.128v-2.671c0-3.1 1.893-4.788 4.659-4.788 1.325 0 2.463.099 2.795.143v3.24l-1.918.001c-1.504 0-1.795.715-1.795 1.763v2.313h3.587l-.467 3.622h-3.12v9.293h6.116c.73 0 1.323-.593 1.323-1.325v-21.35c0-.732-.593-1.325-1.325-1.325z"/>
-                  </svg>
-                </a>
-                <a href="#" className="w-9 h-9 rounded-full bg-stone-700 flex items-center justify-center hover:bg-amber-700 transition">
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073z"/>
-                    <circle cx="12" cy="12" r="3.5"/>
-                  </svg>
-                </a>
-                <a href="#" className="w-9 h-9 rounded-full bg-stone-700 flex items-center justify-center hover:bg-amber-700 transition">
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/>
-                  </svg>
-                </a>
-              </div>
-            </div>
-
-            {/* Categories */}
-            <div>
-              <h4 className="font-semibold text-white mb-3">San Pham</h4>
-              <ul className="space-y-2 text-sm">
-                {categories.map((cat) => (
-                  <li key={cat.id}>
-                    <Link href={`/category/${cat.slug}`} className="text-stone-400 hover:text-white transition">
-                      {cat.name}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Info */}
-            <div>
-              <h4 className="font-semibold text-white mb-3">Thong Tin</h4>
-              <ul className="space-y-2 text-sm text-stone-400">
-                <li><Link href="/about" className="hover:text-white transition">Gioi thieu</Link></li>
-                <li><Link href="/blog" className="hover:text-white transition">Tin tuc</Link></li>
-                <li><Link href="/shipping" className="hover:text-white transition">Chinh sach van chuyen</Link></li>
-                <li><Link href="/warranty" className="hover:text-white transition">Bao hanh & Doi tra</Link></li>
-                <li><Link href="/contact" className="hover:text-white transition">Lien he</Link></li>
-              </ul>
-            </div>
-
-            {/* Contact */}
-            <div>
-              <h4 className="font-semibold text-white mb-3">Lien He</h4>
-              <ul className="space-y-3 text-sm text-stone-400">
-                <li className="flex items-start gap-2">
-                  <svg className="w-4 h-4 mt-0.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  <span>123 Duong ABC, Quan 1, TP. Ho Chi Minh</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                  </svg>
-                  <a href="tel:0123456789" className="hover:text-white transition">0123 456 789</a>
-                </li>
-                <li className="flex items-center gap-2">
-                  <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                  </svg>
-                  <a href="mailto:info@tree.vn" className="hover:text-white transition">info@tree.vn</a>
-                </li>
-                <li className="flex items-center gap-2">
-                  <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span>8:00 - 21:00 (T2 - CN)</span>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
-
-        {/* Bottom bar */}
-        <div className="border-t border-stone-700">
-          <div className="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center text-xs text-stone-500">
-            <p>© 2025 Tree. Dieu khac tuong go thu cong.</p>
-            <div className="flex gap-4 mt-2 md:mt-0">
-              <Link href="/privacy" className="hover:text-white transition">Chinh sach bao mat</Link>
-              <Link href="/terms" className="hover:text-white transition">Dieu khoan su dung</Link>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <Footer categories={categories} />
     </div>
+  );
+}
+
+// ==================== Sub Components ====================
+
+function SpecRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between text-sm">
+      <span className="text-stone-500">{label}:</span>
+      <span className="font-medium text-stone-700">{value}</span>
+    </div>
+  );
+}
+
+function TrustBadge({ title, subtitle }: { title: string; subtitle: string }) {
+  return (
+    <div className="bg-stone-50 rounded p-3">
+      <div className="text-amber-700 font-bold mb-1">{title}</div>
+      <div className="text-stone-500">{subtitle}</div>
+    </div>
+  );
+}
+
+function ZaloIcon() {
+  return (
+    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.334-.373-.121l-6.869 4.326-2.96-.924c-.64-.203-.658-.64.135-.954l11.566-4.458c.538-.196 1.006.128.832.94z"/>
+    </svg>
+  );
+}
+
+function ProductCard({ product }: { product: { id: string; slug: string; name: string; price?: number; featuredImage?: string } }) {
+  return (
+    <Link href={`/product/${product.slug}`} className="group bg-white rounded-lg overflow-hidden border border-stone-200 hover:shadow-md transition">
+      <div className="relative aspect-square bg-stone-100">
+        {product.featuredImage ? (
+          <Image src={product.featuredImage} alt={product.name} fill className="object-cover group-hover:scale-105 transition duration-300" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <svg className="w-10 h-10 text-stone-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+          </div>
+        )}
+      </div>
+      <div className="p-3">
+        <h3 className="text-sm font-medium text-stone-800 group-hover:text-amber-700 transition line-clamp-2 mb-1">{product.name}</h3>
+        <span className="text-amber-700 font-semibold text-sm">{formatPrice(product.price)}</span>
+      </div>
+    </Link>
+  );
+}
+
+function Footer({ categories }: { categories: { id: string; slug: string; name: string }[] }) {
+  return (
+    <footer className="bg-stone-800 text-stone-300 mt-12">
+      <div className="max-w-7xl mx-auto px-4 py-12">
+        <div className="grid md:grid-cols-4 gap-8">
+          <div>
+            <h3 className="text-xl font-bold text-white mb-3">Tree</h3>
+            <p className="text-sm text-stone-400 leading-relaxed">
+              Chuyen cung cap tuong go dieu khac thu cong, tuong Phat, tuong Di Lac, tuong phong thuy.
+            </p>
+          </div>
+          <div>
+            <h4 className="font-semibold text-white mb-3">San Pham</h4>
+            <ul className="space-y-2 text-sm">
+              {categories.map((cat) => (
+                <li key={cat.id}>
+                  <Link href={`/category/${cat.slug}`} className="text-stone-400 hover:text-white transition">{cat.name}</Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <h4 className="font-semibold text-white mb-3">Thong Tin</h4>
+            <ul className="space-y-2 text-sm text-stone-400">
+              <li><Link href="/about" className="hover:text-white transition">Gioi thieu</Link></li>
+              <li><Link href="/blog" className="hover:text-white transition">Tin tuc</Link></li>
+              <li><Link href="/contact" className="hover:text-white transition">Lien he</Link></li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="font-semibold text-white mb-3">Lien He</h4>
+            <ul className="space-y-2 text-sm text-stone-400">
+              <li>123 Duong ABC, Quan 1, TP.HCM</li>
+              <li><a href="tel:0123456789" className="hover:text-white transition">0123 456 789</a></li>
+              <li><a href="mailto:info@tree.vn" className="hover:text-white transition">info@tree.vn</a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div className="border-t border-stone-700">
+        <div className="max-w-7xl mx-auto px-4 py-4 text-center text-xs text-stone-500">
+          © 2025 Tree. Dieu khac tuong go thu cong.
+        </div>
+      </div>
+    </footer>
   );
 }
