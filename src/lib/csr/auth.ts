@@ -7,6 +7,14 @@ import api from './api';
 import Cookies from 'js-cookie';
 import type { ApiResponse } from '@/types';
 
+const isProduction = typeof window !== 'undefined' && window.location.protocol === 'https:';
+
+const cookieOptions: Cookies.CookieAttributes = {
+  expires: 1,
+  secure: isProduction,
+  sameSite: 'lax',
+};
+
 interface LoginRequest {
   email: string;
   password: string;
@@ -26,8 +34,8 @@ export const login = async (data: LoginRequest) => {
   const response = await api.post<ApiResponse<LoginResponse>>('/api/auth/login', data);
   const { token, user } = response.data.data;
 
-  Cookies.set('token', token, { expires: 1 }); // 1 day
-  Cookies.set('user', JSON.stringify(user), { expires: 1 });
+  Cookies.set('token', token, cookieOptions);
+  Cookies.set('user', JSON.stringify(user), cookieOptions);
 
   return response.data.data;
 };
