@@ -125,10 +125,29 @@ export default function SiteSettingsPage() {
     loadSettings();
   }, []);
 
+  // Helper to normalize imageUrl from object to string
+  const normalizeImageUrl = (url: unknown): string | undefined => {
+    if (typeof url === 'object' && url !== null && 'url' in url) {
+      return (url as { url?: string }).url;
+    }
+    return url as string | undefined;
+  };
+
   const handleSave = async (values: SiteSettings) => {
     setSaving(true);
     try {
-      await api.put('/api/admin/site-settings', { ...values, services });
+      // Normalize all image URLs
+      const normalizedValues = {
+        ...values,
+        logoUrl: normalizeImageUrl(values.logoUrl),
+        logoDarkUrl: normalizeImageUrl(values.logoDarkUrl),
+        faviconUrl: normalizeImageUrl(values.faviconUrl),
+        services: services.map(s => ({
+          ...s,
+          imageUrl: normalizeImageUrl(s.imageUrl) || '',
+        })),
+      };
+      await api.put('/api/admin/site-settings', normalizedValues);
       message.success('Cai dat da duoc luu');
     } catch {
       message.error('Luu that bai');
