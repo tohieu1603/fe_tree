@@ -4,10 +4,23 @@ import type { ApiResponse, AuthResponse, User } from '@/types';
 
 const isProduction = typeof window !== 'undefined' && window.location.protocol === 'https:';
 
+// Get root domain for cookie sharing between subdomains
+const getRootDomain = (): string | undefined => {
+  if (typeof window === 'undefined') return undefined;
+  const hostname = window.location.hostname;
+  if (hostname === 'localhost') return undefined;
+  const parts = hostname.split('.');
+  if (parts.length >= 2) {
+    return '.' + parts.slice(-2).join('.');
+  }
+  return undefined;
+};
+
 const cookieOptions: Cookies.CookieAttributes = {
   expires: 1,
   secure: isProduction,
   sameSite: 'lax',
+  domain: getRootDomain(),
 };
 
 export const login = async (email: string, password: string): Promise<AuthResponse> => {
