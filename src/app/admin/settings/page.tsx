@@ -71,10 +71,24 @@ export default function SettingsPage() {
   const handleSave = async (values: SeoSettings) => {
     setSaving(true);
     try {
-      await api.put('/api/admin/seo', values);
+      // Clean up values before sending
+      const cleanValues = {
+        ...values,
+        // Ensure URL has protocol
+        siteUrl: values.siteUrl?.startsWith('http') ? values.siteUrl : `https://${values.siteUrl}`,
+        // Convert empty strings to null for optional fields
+        googleAnalyticsId: values.googleAnalyticsId || null,
+        googleVerification: values.googleVerification || null,
+        ogImage: values.ogImage || null,
+        twitterHandle: values.twitterHandle || null,
+        robotsCustomRules: values.robotsCustomRules || null,
+      };
+      await api.put('/api/admin/seo', cleanValues);
       message.success('Cài đặt đã được lưu');
-    } catch {
-      message.error('Lưu thất bại');
+    } catch (error: unknown) {
+      console.error('SEO save error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Lưu thất bại. Vui lòng kiểm tra lại dữ liệu.';
+      message.error(errorMessage);
     } finally {
       setSaving(false);
     }
@@ -101,7 +115,7 @@ export default function SettingsPage() {
           <Form.Item name="siteName" label="Tên website" rules={[{ required: true }]}>
             <Input placeholder="Tree" size="large" />
           </Form.Item>
-          <Form.Item name="siteUrl" label="URL website" rules={[{ required: true, type: 'url' }]}>
+          <Form.Item name="siteUrl" label="URL website" rules={[{ required: true, message: 'Vui lòng nhập URL website' }]}>
             <Input placeholder="https://example.com" size="large" />
           </Form.Item>
           <Divider />

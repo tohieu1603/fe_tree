@@ -32,8 +32,7 @@ async function getCategories(): Promise<Category[]> {
 }
 
 export const metadata = {
-  title: 'Bai viet - Tree',
-  description: 'Tat ca bai viet',
+  title: 'Bài Viết',
 };
 
 export default async function ArticlesPage({

@@ -4,15 +4,19 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import {
   Form, Input, Select, Button, Card, message, Row, Col, Spin, Image,
-  Divider, Typography, Space, Tag, Popconfirm, Switch, Collapse, Avatar
+  Divider, Typography, Space, Tag, Popconfirm, Switch, Collapse, Avatar,
+  InputNumber, Progress
 } from 'antd';
 import {
   SaveOutlined, ArrowLeftOutlined, EyeOutlined, PictureOutlined,
   SendOutlined, DeleteOutlined, TagsOutlined, ClockCircleOutlined,
   StarOutlined, CommentOutlined, LinkOutlined, GlobalOutlined,
-  CloseOutlined, UserOutlined
+  CloseOutlined, UserOutlined, ThunderboltOutlined, CheckCircleOutlined,
+  FileSearchOutlined, CopyOutlined, CodeOutlined, BulbOutlined,
+  SyncOutlined, EditOutlined
 } from '@ant-design/icons';
-import MarkdownEditor from '@/components/admin/MarkdownEditor';
+import BlockEditor, { ContentBlock, blocksToMarkdown, markdownToBlocks } from '@/components/admin/BlockEditor';
+import ImageUpload, { ImageData } from '@/components/admin/ImageUpload';
 import { getAdminArticle, updateArticle, deleteArticle } from '@/lib/articles';
 import { getAdminCategories } from '@/lib/categories';
 import type { Category, ArticleRequest, Article } from '@/types';
@@ -28,6 +32,7 @@ export default function EditArticlePage() {
   const [deleting, setDeleting] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [contentBlocks, setContentBlocks] = useState<ContentBlock[]>([]);
   const [content, setContent] = useState('');
   const [currentStatus, setCurrentStatus] = useState('DRAFT');
   const [article, setArticle] = useState<Article | null>(null);
@@ -35,12 +40,12 @@ export default function EditArticlePage() {
   // Form state
   const [formData, setFormData] = useState({
     summary: '',
-    featuredImage: '',
-    featuredImageAlt: '',
+    featuredImage: '' as string | ImageData,
     tags: '',
     isFeatured: false,
     allowComments: true,
     sourceUrl: '',
+    customReadingTime: null as number | null,
   });
 
   useEffect(() => {
@@ -52,16 +57,40 @@ export default function EditArticlePage() {
         ]);
         setCategories(cats);
         setArticle(articleData);
-        setContent(articleData.content);
+
+        // Load content blocks - parse from JSON if exists, otherwise convert from markdown
+        if (articleData.contentBlocks) {
+          try {
+            const blocks = JSON.parse(articleData.contentBlocks);
+            setContentBlocks(blocks);
+            setContent(blocksToMarkdown(blocks));
+          } catch {
+            // Fallback to markdown conversion
+            const blocks = markdownToBlocks(articleData.content || '');
+            setContentBlocks(blocks);
+            setContent(articleData.content || '');
+          }
+        } else if (articleData.content) {
+          // Convert existing markdown content to blocks
+          const blocks = markdownToBlocks(articleData.content);
+          setContentBlocks(blocks);
+          setContent(articleData.content);
+        }
+
         setCurrentStatus(articleData.status);
         setFormData({
           summary: articleData.summary || '',
-          featuredImage: articleData.featuredImage || '',
-          featuredImageAlt: articleData.featuredImageAlt || '',
+          featuredImage: articleData.featuredImage ? {
+            url: articleData.featuredImage,
+            alt: articleData.featuredImageAlt || '',
+            width: articleData.featuredImageWidth,
+            height: articleData.featuredImageHeight,
+          } : '',
           tags: articleData.tags || '',
           isFeatured: articleData.isFeatured || false,
           allowComments: articleData.allowComments !== false,
           sourceUrl: articleData.sourceUrl || '',
+          customReadingTime: articleData.readingTime || null,
         });
         form.setFieldsValue({
           title: articleData.title,
@@ -87,22 +116,41 @@ export default function EditArticlePage() {
   };
 
   const onFinish = async (values: ArticleRequest) => {
-    if (!content.trim()) {
+    if (contentBlocks.length === 0) {
       message.error('Noi dung bai viet khong duoc de trong');
       return;
     }
     setLoading(true);
     try {
+      // Extract image data
+      const imageData = typeof formData.featuredImage === 'object' ? formData.featuredImage : null;
+      const imageUrl = typeof formData.featuredImage === 'string'
+        ? formData.featuredImage
+        : formData.featuredImage?.url || '';
+
+      // Convert blocks to markdown for content field (backward compatibility)
+      const markdownContent = blocksToMarkdown(contentBlocks);
+
+      // Generate table of contents from headings
+      const tableOfContents = contentBlocks
+        .filter(b => ['H2', 'H3', 'H4'].includes(b.type) && b.content.trim())
+        .map(b => ({ type: b.type, content: b.content, anchor: b.anchor }));
+
       await updateArticle(id, {
         ...values,
-        content,
+        content: markdownContent,
+        contentBlocks: JSON.stringify(contentBlocks),
+        tableOfContents: JSON.stringify(tableOfContents),
         summary: formData.summary,
-        featuredImage: formData.featuredImage,
-        featuredImageAlt: formData.featuredImageAlt,
+        featuredImage: imageUrl,
+        featuredImageAlt: imageData?.alt || '',
+        featuredImageWidth: imageData?.width,
+        featuredImageHeight: imageData?.height,
         tags: formData.tags,
         isFeatured: formData.isFeatured,
         allowComments: formData.allowComments,
         sourceUrl: formData.sourceUrl,
+        readingTime: formData.customReadingTime || readingTime,
       });
       message.success('Cap nhat bai viet thanh cong!');
       setCurrentStatus(values.status || currentStatus);
@@ -154,8 +202,8 @@ export default function EditArticlePage() {
     }
   };
 
-  // Calculate reading time
-  const wordCount = content.split(/\s+/).filter(Boolean).length;
+  // Calculate reading time from blocks
+  const wordCount = contentBlocks.reduce((acc, b) => acc + b.content.split(/\s+/).filter(Boolean).length, 0);
   const readingTime = Math.max(1, Math.ceil(wordCount / 200));
 
   if (fetching) {
@@ -252,10 +300,7 @@ export default function EditArticlePage() {
                 </Space>
               }
             >
-              <MarkdownEditor value={content} onChange={setContent} height={600} />
-              <div className="mt-2 text-xs text-gray-500">
-                Ho tro Markdown. Dan HTML tu dong chuyen doi thanh Markdown.
-              </div>
+              <BlockEditor value={contentBlocks} onChange={setContentBlocks} />
             </Card>
 
             {/* Tags */}
@@ -294,6 +339,107 @@ export default function EditArticlePage() {
                   <div>Luot xem: {article.viewCount || 0}</div>
                 </div>
               )}
+            </Card>
+
+            {/* Reading Time */}
+            <Card
+              title={<span><ClockCircleOutlined className="mr-2" />Thoi gian doc</span>}
+              className="mb-4 shadow-sm"
+            >
+              <div className="flex items-center gap-3">
+                <InputNumber
+                  value={formData.customReadingTime || readingTime}
+                  onChange={(v) => updateFormData('customReadingTime', v)}
+                  min={1}
+                  max={60}
+                  className="w-20"
+                />
+                <Text>phut</Text>
+              </div>
+              <Text type="secondary" className="text-xs mt-2 block">
+                Tu dong tinh tu noi dung (~200 tu/phut)
+              </Text>
+            </Card>
+
+            {/* AI SEO Assistant */}
+            <Card
+              title={<span><ThunderboltOutlined className="mr-2 text-yellow-500" />AI SEO Assistant</span>}
+              className="mb-4 shadow-sm"
+            >
+              <Collapse ghost size="small" className="-mx-3">
+                <Collapse.Panel
+                  header={<span><EditOutlined className="mr-2" />SEO Score (AI)</span>}
+                  key="seo-score"
+                >
+                  <Button type="primary" ghost block icon={<SyncOutlined />}>
+                    Phan tich SEO
+                  </Button>
+                  <Text type="secondary" className="text-xs mt-2 block">
+                    Phan tich va cham diem SEO cho bai viet
+                  </Text>
+                </Collapse.Panel>
+
+                <Collapse.Panel
+                  header={<span><BulbOutlined className="mr-2" />Smart Meta Generator</span>}
+                  key="meta-gen"
+                >
+                  <Button block icon={<ThunderboltOutlined />}>
+                    Tao Meta tu dong
+                  </Button>
+                  <Text type="secondary" className="text-xs mt-2 block">
+                    Tu dong tao meta title, description tu noi dung
+                  </Text>
+                </Collapse.Panel>
+
+                <Collapse.Panel
+                  header={<span><LinkOutlined className="mr-2" />Internal Links</span>}
+                  key="internal-links"
+                >
+                  <Button block icon={<FileSearchOutlined />}>
+                    Tim lien ket noi bo
+                  </Button>
+                  <Text type="secondary" className="text-xs mt-2 block">
+                    Goi y cac bai viet lien quan de lien ket
+                  </Text>
+                </Collapse.Panel>
+
+                <Collapse.Panel
+                  header={<span><CopyOutlined className="mr-2" />Duplicate Check</span>}
+                  key="duplicate"
+                >
+                  <Button block icon={<CheckCircleOutlined />}>
+                    Kiem tra trung lap
+                  </Button>
+                  <Text type="secondary" className="text-xs mt-2 block">
+                    Kiem tra noi dung trung lap voi bai viet khac
+                  </Text>
+                </Collapse.Panel>
+
+                <Collapse.Panel
+                  header={<span><CodeOutlined className="mr-2" />Schema Generator</span>}
+                  key="schema"
+                >
+                  <Button block icon={<CodeOutlined />}>
+                    Tao Schema Markup
+                  </Button>
+                  <Text type="secondary" className="text-xs mt-2 block">
+                    Tao structured data cho Google
+                  </Text>
+                </Collapse.Panel>
+              </Collapse>
+            </Card>
+
+            {/* Content Optimizer */}
+            <Card
+              title={<span><BulbOutlined className="mr-2 text-orange-500" />Content Optimizer</span>}
+              className="mb-4 shadow-sm"
+            >
+              <Button type="primary" ghost block icon={<ThunderboltOutlined />}>
+                Phan tich & Goi y
+              </Button>
+              <Text type="secondary" className="text-xs mt-2 block">
+                AI se phan tich noi dung va dua ra goi y cu the
+              </Text>
             </Card>
 
             {/* Publish Settings */}
@@ -350,31 +496,15 @@ export default function EditArticlePage() {
 
             {/* Featured Image */}
             <Card title="Anh dai dien" className="mb-4 shadow-sm">
-              <Input
-                placeholder="Nhap URL anh..."
+              <ImageUpload
                 value={formData.featuredImage}
-                onChange={(e) => updateFormData('featuredImage', e.target.value)}
-                prefix={<PictureOutlined />}
-                className="mb-2"
+                onChange={(val) => updateFormData('featuredImage', val)}
+                folder="articles"
+                showAttributes={true}
+                placeholder="Upload anh dai dien (1200x630px)"
               />
-              <Input
-                placeholder="Mo ta anh (alt text cho SEO)"
-                value={formData.featuredImageAlt}
-                onChange={(e) => updateFormData('featuredImageAlt', e.target.value)}
-                className="mb-2"
-              />
-              {formData.featuredImage && (
-                <div className="border rounded overflow-hidden">
-                  <Image
-                    src={formData.featuredImage}
-                    alt={formData.featuredImageAlt || 'Preview'}
-                    className="w-full"
-                    fallback="/placeholder.png"
-                  />
-                </div>
-              )}
               <Text type="secondary" className="text-xs mt-2 block">
-                Kich thuoc khuyen nghi: 1200x630px
+                Kich thuoc khuyen nghi: 1200x630px. Ho tro alt text, kich thuoc cho SEO.
               </Text>
             </Card>
 

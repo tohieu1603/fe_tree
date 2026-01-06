@@ -26,18 +26,23 @@ export default function NavigationBar({ categories }: NavigationBarProps) {
         const p = progressRef.current;
         const isScrolled = p > 0.5;
 
-        // Warm cream background when scrolled
+        // Use CSS variables for colors
+        const bgLight = getComputedStyle(document.documentElement).getPropertyValue('--bg-light').trim() || '#fdfbf7';
+        const textDark = getComputedStyle(document.documentElement).getPropertyValue('--text-dark').trim() || '#2c2416';
+        const textLight = getComputedStyle(document.documentElement).getPropertyValue('--text-light').trim() || '#d4c5a9';
+        const colorPrimary = getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim() || '#c9a962';
+
         headerRef.current.style.backgroundColor = isScrolled
-          ? 'rgba(253, 251, 247, 0.98)'
+          ? `color-mix(in srgb, ${bgLight} 98%, transparent)`
           : 'transparent';
         headerRef.current.style.backdropFilter = isScrolled ? 'blur(12px)' : 'none';
         headerRef.current.style.boxShadow = isScrolled
-          ? '0 1px 0 rgba(201, 169, 98, 0.1)'
+          ? `0 1px 0 color-mix(in srgb, ${colorPrimary} 10%, transparent)`
           : 'none';
 
         const links = headerRef.current.querySelectorAll('a, button');
         links.forEach((el) => {
-          (el as HTMLElement).style.color = isScrolled ? '#2c2416' : '#d4c5a9';
+          (el as HTMLElement).style.color = isScrolled ? textDark : textLight;
         });
       }
 
@@ -79,14 +84,14 @@ export default function NavigationBar({ categories }: NavigationBarProps) {
               <Link
                 href="/products"
                 className="text-[13px] tracking-[0.2em] uppercase hover:opacity-60 transition-opacity font-medium"
-                style={{ fontFamily: "'Cormorant Garamond', serif" }}
+                style={{ fontFamily: 'var(--font-heading)' }}
               >
                 Bộ Sưu Tập
               </Link>
               <Link
                 href="/articles"
                 className="text-[13px] tracking-[0.2em] uppercase hover:opacity-60 transition-opacity font-medium"
-                style={{ fontFamily: "'Cormorant Garamond', serif" }}
+                style={{ fontFamily: 'var(--font-heading)' }}
               >
                 Câu Chuyện
               </Link>
@@ -101,7 +106,7 @@ export default function NavigationBar({ categories }: NavigationBarProps) {
                 ref={logoRef}
                 className="text-xl md:text-2xl tracking-[0.25em] uppercase font-normal"
                 style={{
-                  fontFamily: "'Cormorant Garamond', serif",
+                  fontFamily: 'var(--font-heading)',
                   opacity: 0,
                   transition: 'color 0.3s',
                 }}
@@ -115,14 +120,14 @@ export default function NavigationBar({ categories }: NavigationBarProps) {
               <Link
                 href="/about"
                 className="text-[13px] tracking-[0.2em] uppercase hover:opacity-60 transition-opacity font-medium"
-                style={{ fontFamily: "'Cormorant Garamond', serif" }}
+                style={{ fontFamily: 'var(--font-heading)' }}
               >
                 Về Chúng Tôi
               </Link>
               <Link
                 href="/contact"
                 className="text-[13px] tracking-[0.2em] uppercase hover:opacity-60 transition-opacity font-medium"
-                style={{ fontFamily: "'Cormorant Garamond', serif" }}
+                style={{ fontFamily: 'var(--font-heading)' }}
               >
                 Liên Hệ
               </Link>
@@ -151,14 +156,15 @@ export default function NavigationBar({ categories }: NavigationBarProps) {
           <div
             className="absolute top-0 left-0 w-80 h-full"
             style={{
-              backgroundColor: '#fdfbf7',
+              backgroundColor: 'var(--bg-light)',
               boxShadow: '4px 0 40px rgba(0,0,0,0.2)'
             }}
           >
             <div className="p-8">
               <button
                 onClick={() => setMobileOpen(false)}
-                className="absolute top-6 right-6 p-2 text-[#2c2416]"
+                className="absolute top-6 right-6 p-2"
+                style={{ color: 'var(--text-dark)' }}
               >
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
                   <path d="M6 18L18 6M6 6l12 12" />
@@ -168,8 +174,8 @@ export default function NavigationBar({ categories }: NavigationBarProps) {
               <div
                 className="text-xl tracking-[0.25em] uppercase font-normal mb-12"
                 style={{
-                  fontFamily: "'Cormorant Garamond', serif",
-                  color: '#2c2416',
+                  fontFamily: 'var(--font-heading)',
+                  color: 'var(--text-dark)',
                 }}
               >
                 Duc Viet
@@ -189,9 +195,9 @@ export default function NavigationBar({ categories }: NavigationBarProps) {
                     onClick={() => setMobileOpen(false)}
                     className="block py-4 text-base tracking-[0.12em] uppercase border-b hover:pl-3 transition-all"
                     style={{
-                      fontFamily: "'Cormorant Garamond', serif",
-                      color: '#2c2416',
-                      borderColor: 'rgba(201, 169, 98, 0.15)',
+                      fontFamily: 'var(--font-heading)',
+                      color: 'var(--text-dark)',
+                      borderColor: 'color-mix(in srgb, var(--color-primary) 15%, transparent)',
                     }}
                   >
                     {item.label}
@@ -200,20 +206,20 @@ export default function NavigationBar({ categories }: NavigationBarProps) {
               </nav>
 
               {categories.length > 0 && (
-                <div className="mt-10 pt-8 border-t" style={{ borderColor: 'rgba(201, 169, 98, 0.2)' }}>
+                <div className="mt-10 pt-8 border-t" style={{ borderColor: 'color-mix(in srgb, var(--color-primary) 20%, transparent)' }}>
                   <p
                     className="text-[11px] tracking-[0.2em] uppercase mb-6"
-                    style={{ color: '#8b7355' }}
+                    style={{ color: 'var(--color-secondary)' }}
                   >
                     Danh Mục
                   </p>
                   {categories.slice(0, 4).map((cat) => (
                     <Link
                       key={cat.id}
-                      href={`/category/${cat.slug}`}
+                      href={`/products/category/${cat.slug}`}
                       onClick={() => setMobileOpen(false)}
-                      className="block py-3 text-sm hover:text-[#c9a962] transition-colors"
-                      style={{ color: '#5a4a3a' }}
+                      className="block py-3 text-sm transition-colors"
+                      style={{ color: 'color-mix(in srgb, var(--text-dark) 70%, transparent)' }}
                     >
                       {cat.name}
                     </Link>

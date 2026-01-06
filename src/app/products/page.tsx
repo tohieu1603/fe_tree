@@ -38,8 +38,7 @@ function calculateDiscount(price?: number, originalPrice?: number): number | nul
 }
 
 export const metadata = {
-  title: 'San Pham | Tree - Tuong go nghe thuat',
-  description: 'Kham pha bo suu tap tuong go dieu khac thu cong - Tuong Phat, Tuong Di Lac, Tuong Tam Da va nhieu tac pham nghe thuat khac',
+  title: 'Sản Phẩm',
 };
 
 export default async function ProductsPage() {

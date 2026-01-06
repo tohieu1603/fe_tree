@@ -18,6 +18,7 @@ import {
   MoonOutlined,
   BellOutlined,
   SearchOutlined,
+  PictureOutlined,
 } from '@ant-design/icons';
 import { logout, getUser, isAuthenticated } from '@/lib/auth';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -30,6 +31,8 @@ const menuItems = [
   { key: '/admin', icon: <DashboardOutlined />, label: 'Dashboard' },
   { key: '/admin/articles', icon: <FileTextOutlined />, label: 'Bai viet' },
   { key: '/admin/categories', icon: <FolderOutlined />, label: 'Danh muc' },
+  { key: '/admin/banners', icon: <PictureOutlined />, label: 'Banner' },
+  { key: '/admin/site-settings', icon: <GlobalOutlined />, label: 'Cai dat Website' },
   { key: '/admin/settings', icon: <SettingOutlined />, label: 'Cai dat SEO' },
 ];
 
@@ -47,6 +50,10 @@ const getBreadcrumbItems = (pathname: string): { title: React.ReactNode; href?: 
     }
   } else if (pathname.includes('/categories')) {
     items.push({ title: 'Danh muc', href: '/admin/categories' });
+  } else if (pathname.includes('/banners')) {
+    items.push({ title: 'Banner', href: '/admin/banners' });
+  } else if (pathname.includes('/site-settings')) {
+    items.push({ title: 'Cai dat Website', href: '/admin/site-settings' });
   } else if (pathname.includes('/settings')) {
     items.push({ title: 'Cai dat SEO', href: '/admin/settings' });
   } else if (pathname === '/admin') {
@@ -154,6 +161,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           selectedKeys={[
             pathname.startsWith('/admin/articles') ? '/admin/articles' :
             pathname.startsWith('/admin/categories') ? '/admin/categories' :
+            pathname.startsWith('/admin/banners') ? '/admin/banners' :
+            pathname.startsWith('/admin/site-settings') ? '/admin/site-settings' :
             pathname.startsWith('/admin/settings') ? '/admin/settings' : '/admin'
           ]}
           items={menuItems}

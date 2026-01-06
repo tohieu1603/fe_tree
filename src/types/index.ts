@@ -33,6 +33,7 @@ export interface Category {
   slug: string;
   description?: string;
   icon?: string;
+  imageUrl?: string;
   sortOrder: number;
   active: boolean;
   articleCount: number;
@@ -50,8 +51,12 @@ export interface Article {
   summary?: string;
   content: string;
   contentHtml?: string;
+  contentBlocks?: string;       // JSON string of content blocks
+  tableOfContents?: string;     // JSON string of TOC items
   featuredImage?: string;
   featuredImageAlt?: string;
+  featuredImageWidth?: number;
+  featuredImageHeight?: number;
   tags?: string;
   readingTime?: number;
   isFeatured?: boolean;
@@ -79,8 +84,12 @@ export interface ArticleRequest {
   slug?: string;
   summary?: string;
   content: string;
+  contentBlocks?: string;      // JSON string of content blocks
+  tableOfContents?: string;    // JSON string of TOC items (auto-generated from headings)
   featuredImage?: string;
   featuredImageAlt?: string;
+  featuredImageWidth?: number;
+  featuredImageHeight?: number;
   tags?: string;
   readingTime?: number;
   isFeatured?: boolean;
@@ -100,6 +109,7 @@ export interface CategoryRequest {
   slug?: string;
   description?: string;
   icon?: string;
+  imageUrl?: string;
   sortOrder?: number;
   active?: boolean;
   parentId?: string;

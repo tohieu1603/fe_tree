@@ -2,8 +2,10 @@
 
 import { useEffect, useRef } from 'react';
 import Image from 'next/image';
+import { useSiteSettings } from '@/contexts/SiteSettingsContext';
 
 export default function HeroSection() {
+  const { settings } = useSiteSettings();
   const progressRef = useRef(0);
   const targetRef = useRef(0);
   const containerRef = useRef<HTMLElement>(null);
@@ -74,7 +76,7 @@ export default function HeroSection() {
     <section
       ref={containerRef}
       className="relative h-screen w-full overflow-hidden"
-      style={{ backgroundColor: '#1a1510' }}
+      style={{ backgroundColor: 'var(--bg-dark)' }}
     >
       {/* Background - Trầm hương atmosphere */}
       <div
@@ -94,7 +96,7 @@ export default function HeroSection() {
         <div
           className="absolute inset-0"
           style={{
-            background: 'linear-gradient(to bottom, rgba(26, 21, 16, 0.4) 0%, rgba(26, 21, 16, 0.6) 100%)'
+            background: 'linear-gradient(to bottom, color-mix(in srgb, var(--bg-dark) 40%, transparent) 0%, color-mix(in srgb, var(--bg-dark) 60%, transparent) 100%)'
           }}
         />
       </div>
@@ -105,12 +107,12 @@ export default function HeroSection() {
           ref={textRef}
           className="will-change-transform text-center"
         >
-          {/* Main Logo */}
+          {/* Main Logo - responsive font size based on text length */}
           <h1
             style={{
-              color: '#d4c5a9',
-              fontFamily: "'Cormorant Garamond', 'Times New Roman', serif",
-              fontSize: 'min(18vw, 280px)',
+              color: 'var(--text-light)',
+              fontFamily: 'var(--font-heading)',
+              fontSize: `min(${Math.max(8, 18 - ((settings.siteName || 'DUC VIET').length - 2) * 1.2)}vw, ${Math.max(80, 280 - ((settings.siteName || 'DUC VIET').length - 2) * 15)}px)`,
               fontWeight: 300,
               letterSpacing: '0.15em',
               textTransform: 'uppercase',
@@ -118,7 +120,7 @@ export default function HeroSection() {
               userSelect: 'none',
             }}
           >
-            DUC VIET
+            {settings.siteName || 'DUC VIET'}
           </h1>
         </div>
       </div>
@@ -128,15 +130,15 @@ export default function HeroSection() {
         <p
           ref={subtitleRef}
           style={{
-            color: 'rgba(212, 197, 169, 0.6)',
-            fontFamily: "'Cormorant Garamond', serif",
+            color: 'color-mix(in srgb, var(--text-light) 60%, transparent)',
+            fontFamily: 'var(--font-heading)',
             fontSize: '12px',
             fontWeight: 400,
             letterSpacing: '0.4em',
             textTransform: 'uppercase',
           }}
         >
-          Tinh Hoa Thiên Nhiên • Nghệ Thuật Thủ Công
+          {settings.heroSubtitle || 'Tinh Hoa Thiên Nhiên • Nghệ Thuật Thủ Công'}
         </p>
       </div>
 
@@ -149,7 +151,7 @@ export default function HeroSection() {
         <div className="flex flex-col items-center gap-3">
           <span
             style={{
-              color: 'rgba(212, 197, 169, 0.4)',
+              color: 'color-mix(in srgb, var(--text-light) 40%, transparent)',
               fontSize: '10px',
               letterSpacing: '0.2em',
               textTransform: 'uppercase',
@@ -161,7 +163,7 @@ export default function HeroSection() {
             style={{
               width: '1px',
               height: '50px',
-              background: 'linear-gradient(to bottom, rgba(201, 169, 98, 0.6), transparent)',
+              background: 'linear-gradient(to bottom, color-mix(in srgb, var(--color-primary) 60%, transparent), transparent)',
             }}
           />
         </div>

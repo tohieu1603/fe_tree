@@ -1,29 +1,32 @@
-/* Import fonts - Cormorant Garamond cho tiêu đề, Inter cho body */
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=Inter:wght@300;400;500&display=swap');
+/* Import fonts - Multiple font families for theme switching */
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=Inter:wght@300;400;500&family=Playfair+Display:wght@400;500;600&family=DM+Sans:wght@400;500&family=Crimson+Pro:wght@400;500;600&family=Source+Sans+3:wght@400;500&family=Cinzel:wght@400;500;600&family=Lato:wght@400;500&family=Libre+Baskerville:wght@400;700&family=Open+Sans:wght@400;500&family=Bodoni+Moda:wght@400;500;600&family=Nunito:wght@400;500&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Trầm Hương Color Palette */
+/* CSS Variables - default theme (will be overridden by StyleThemeContext) */
 :root {
-  /* Primary - Warm golds */
-  --gold-primary: #c9a962;
-  --gold-light: #d4c5a9;
-  --gold-dark: #8b7355;
+  /* Font families */
+  --font-heading: 'Cormorant Garamond', Georgia, serif;
+  --font-body: 'Inter', -apple-system, sans-serif;
 
-  /* Backgrounds */
+  /* Color palette */
+  --color-primary: #c9a962;
+  --color-secondary: #8b7355;
+  --color-accent: #d4c5a9;
   --bg-dark: #1a1510;
-  --bg-warm: #2c2416;
-  --bg-cream: #fdfbf7;
-  --bg-light: #f5f3ef;
-
-  /* Text */
+  --bg-light: #fdfbf7;
   --text-dark: #2c2416;
   --text-light: #d4c5a9;
-  --text-muted: #5a4a3a;
 
-  /* Legacy */
+  /* Legacy compatibility */
+  --gold-primary: var(--color-primary);
+  --gold-light: var(--color-accent);
+  --gold-dark: var(--color-secondary);
+  --bg-cream: var(--bg-light);
+  --bg-warm: #2c2416;
+  --text-muted: #5a4a3a;
   --black: #000000;
   --white: #ffffff;
 }
@@ -39,20 +42,20 @@ html {
 }
 
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: var(--font-body);
   font-weight: 400;
   font-size: 15px;
   line-height: 1.6;
   color: var(--text-dark);
-  background: var(--bg-cream);
+  background: var(--bg-light);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   letter-spacing: 0.01em;
 }
 
-/* Typography - Headings use Cormorant Garamond */
+/* Typography - Headings use dynamic font */
 h1, h2, h3, h4, h5, h6 {
-  font-family: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+  font-family: var(--font-heading);
   font-weight: 400;
   line-height: 1.2;
 }
@@ -63,21 +66,21 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--bg-cream);
+  background: var(--bg-light);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--gold-dark);
+  background: var(--color-secondary);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--gold-primary);
+  background: var(--color-primary);
 }
 
 /* Selection */
 ::selection {
-  background: var(--gold-primary);
+  background: var(--color-primary);
   color: var(--bg-dark);
 }
 
@@ -103,7 +106,7 @@ button {
 }
 
 *:focus-visible {
-  outline: 1px solid var(--gold-primary);
+  outline: 1px solid var(--color-primary);
   outline-offset: 2px;
 }
 
@@ -126,15 +129,23 @@ button {
 
 /* Utility classes */
 .font-display {
-  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-family: var(--font-heading);
+}
+
+.font-body {
+  font-family: var(--font-body);
 }
 
 .text-gold {
-  color: var(--gold-primary);
+  color: var(--color-primary);
+}
+
+.text-primary {
+  color: var(--color-primary);
 }
 
 .bg-cream {
-  background-color: var(--bg-cream);
+  background-color: var(--bg-light);
 }
 
 /* Line clamp */

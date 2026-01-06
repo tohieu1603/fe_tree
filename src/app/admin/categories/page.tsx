@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { Table, Button, Space, Tag, Popconfirm, message, Modal, Form, Input, InputNumber, Switch, Card, Typography, Tooltip, Row, Col, Statistic } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, FolderOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, FolderOutlined, CheckCircleOutlined, CloseCircleOutlined, PictureOutlined } from '@ant-design/icons';
 import { getAdminCategories, createCategory, updateCategory, deleteCategory } from '@/lib/categories';
+import ImageUpload, { getImageUrl } from '@/components/admin/ImageUpload';
+import Image from 'next/image';
 import type { Category, CategoryRequest } from '@/types';
 
 const { Title, Text } = Typography;
@@ -49,6 +51,7 @@ export default function CategoriesPage() {
         name: category.name,
         slug: category.slug,
         description: category.description,
+        imageUrl: category.imageUrl,
         sortOrder: category.sortOrder,
         active: category.active,
       });
@@ -100,9 +103,20 @@ export default function CategoriesPage() {
       key: 'category',
       render: (_: unknown, record: Category) => (
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-            <FolderOutlined className="text-blue-500 text-lg" />
-          </div>
+          {record.imageUrl ? (
+            <div className="w-10 h-10 rounded-lg overflow-hidden relative">
+              <Image
+                src={getImageUrl(record.imageUrl)}
+                alt={record.name}
+                fill
+                className="object-cover"
+              />
+            </div>
+          ) : (
+            <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+              <FolderOutlined className="text-blue-500 text-lg" />
+            </div>
+          )}
           <div>
             <Text strong>{record.name}</Text>
             <div>
@@ -260,6 +274,10 @@ export default function CategoriesPage() {
               showCount
               maxLength={200}
             />
+          </Form.Item>
+
+          <Form.Item name="imageUrl" label="Ảnh danh mục" extra="Ảnh thumbnail hiển thị ở trang chủ và trang danh mục">
+            <ImageUpload folder="categories" placeholder="Upload ảnh danh mục (khuyến nghị: 800x600px)" showAttributes />
           </Form.Item>
 
           <Row gutter={16}>

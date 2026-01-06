@@ -5,34 +5,35 @@ import Image from 'next/image';
 import Link from 'next/link';
 
 interface Slide {
-  id: number;
-  image: string;
+  id: string;
+  imageUrl: string;
   title: string;
   subtitle: string;
   buttonText: string;
   buttonLink: string;
 }
 
-const slides: Slide[] = [
+// Default slides as fallback
+const defaultSlides: Slide[] = [
   {
-    id: 1,
-    image: 'https://images.unsplash.com/photo-1609167830220-7164aa360951?w=1600&q=80',
+    id: '1',
+    imageUrl: 'https://images.unsplash.com/photo-1609167830220-7164aa360951?w=1600&q=80',
     title: 'Tuong Go Nghe Thuat',
     subtitle: 'Tuong go dieu khac thu cong, mang dam ban sac van hoa Viet',
     buttonText: 'Xem San Pham',
     buttonLink: '/products',
   },
   {
-    id: 2,
-    image: 'https://images.unsplash.com/photo-1545558014-8692077e9b5c?w=1600&q=80',
+    id: '2',
+    imageUrl: 'https://images.unsplash.com/photo-1545558014-8692077e9b5c?w=1600&q=80',
     title: 'Dieu Khac Thu Cong',
     subtitle: 'Moi tac pham la mot tac pham nghe thuat doc nhat vo nhi',
     buttonText: 'Lien He',
     buttonLink: '/contact',
   },
   {
-    id: 3,
-    image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=1600&q=80',
+    id: '3',
+    imageUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=1600&q=80',
     title: 'Go Quy Tu Nhien',
     subtitle: 'Go huong, go trac, go cam lai - chat luong cao cap',
     buttonText: 'Xem Them',
@@ -40,17 +41,37 @@ const slides: Slide[] = [
   },
 ];
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+
 export default function BannerSlideshow() {
+  const [slides, setSlides] = useState<Slide[]>(defaultSlides);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
 
+  useEffect(() => {
+    const fetchBanners = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/public/banners`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.data && data.data.length > 0) {
+            setSlides(data.data);
+          }
+        }
+      } catch {
+        // Use default slides on error
+      }
+    };
+    fetchBanners();
+  }, []);
+
   const nextSlide = useCallback(() => {
     setCurrentSlide((prev) => (prev + 1) % slides.length);
-  }, []);
+  }, [slides.length]);
 
   const prevSlide = useCallback(() => {
     setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
-  }, []);
+  }, [slides.length]);
 
   const goToSlide = (index: number) => {
     setCurrentSlide(index);
@@ -59,10 +80,12 @@ export default function BannerSlideshow() {
   };
 
   useEffect(() => {
-    if (!isAutoPlaying) return;
+    if (!isAutoPlaying || slides.length === 0) return;
     const timer = setInterval(nextSlide, 5000);
     return () => clearInterval(timer);
-  }, [isAutoPlaying, nextSlide]);
+  }, [isAutoPlaying, nextSlide, slides.length]);
+
+  if (slides.length === 0) return null;
 
   return (
     <section className="relative h-[500px] md:h-[600px] overflow-hidden">
@@ -76,7 +99,7 @@ export default function BannerSlideshow() {
         >
           <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-black/30 z-10" />
           <Image
-            src={slide.image}
+            src={slide.imageUrl}
             alt={slide.title}
             fill
             className="object-cover"
