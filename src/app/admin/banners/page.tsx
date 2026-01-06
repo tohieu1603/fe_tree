@@ -152,11 +152,19 @@ export default function BannersPage() {
   const handleSave = async (values: BannerFormData) => {
     setSaving(true);
     try {
+      // Normalize imageUrl - extract URL string if it's an object
+      const normalizedValues = {
+        ...values,
+        imageUrl: typeof values.imageUrl === 'object' && values.imageUrl !== null
+          ? (values.imageUrl as { url?: string }).url
+          : values.imageUrl,
+      };
+
       if (editingBanner) {
-        await api.put(`/api/admin/banners/${editingBanner.id}`, values);
+        await api.put(`/api/admin/banners/${editingBanner.id}`, normalizedValues);
         message.success('Cap nhat banner thanh cong');
       } else {
-        await api.post('/api/admin/banners', values);
+        await api.post('/api/admin/banners', normalizedValues);
         message.success('Tao banner thanh cong');
       }
       setModalOpen(false);

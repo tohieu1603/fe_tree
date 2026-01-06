@@ -66,16 +66,25 @@ export default function CategoriesPage() {
   const handleSubmit = async (values: CategoryRequest) => {
     setSubmitting(true);
     try {
+      // Normalize imageUrl - extract URL string if it's an object
+      const normalizedValues = {
+        ...values,
+        imageUrl: typeof values.imageUrl === 'object' && values.imageUrl !== null
+          ? (values.imageUrl as { url?: string }).url
+          : values.imageUrl,
+      };
+
       if (editingId) {
-        await updateCategory(editingId, values);
+        await updateCategory(editingId, normalizedValues);
         message.success('Category updated');
       } else {
-        await createCategory(values);
+        await createCategory(normalizedValues);
         message.success('Category created');
       }
       setModalOpen(false);
       loadCategories();
-    } catch {
+    } catch (error) {
+      console.error('Category save error:', error);
       message.error('Operation failed');
     } finally {
       setSubmitting(false);
