@@ -1,10 +1,9 @@
 /**
  * Axios instance cho CSR (Admin)
- * Tự động gắn JWT token vào header
+ * Tự động gắn JWT token vào header từ localStorage
  */
 
 import axios from 'axios';
-import Cookies from 'js-cookie';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
@@ -14,7 +13,7 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  const token = Cookies.get('token');
+  const token = localStorage.getItem('token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -25,7 +24,8 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      Cookies.remove('token');
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
       if (typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')) {
         window.location.href = '/admin/login';
       }
