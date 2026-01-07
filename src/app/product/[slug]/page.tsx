@@ -419,7 +419,6 @@ export default function ProductDetailPage() {
                 {product.dimensions && <SpecRow label="Kích thước" value={product.dimensions} />}
                 {product.color && <SpecRow label="Màu sắc" value={product.color} />}
                 {product.weight && <SpecRow label="Trọng lượng" value={`${product.weight} kg`} />}
-                {product.origin && <SpecRow label="Xuất xứ" value={product.origin} />}
               </div>
             )}
 

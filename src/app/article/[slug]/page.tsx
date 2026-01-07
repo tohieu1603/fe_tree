@@ -232,14 +232,6 @@ export default function ArticlePage() {
               priority
             />
           </div>
-          {article.featuredImageCaption && (
-            <p
-              className="text-center text-[11px] mt-4 italic"
-              style={{ color: 'var(--color-secondary)' }}
-            >
-              {article.featuredImageCaption}
-            </p>
-          )}
         </div>
       )}
 
