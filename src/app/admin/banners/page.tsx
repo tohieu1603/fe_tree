@@ -3,20 +3,18 @@
 import { useEffect, useState } from 'react';
 import {
   Card,
-  Table,
   Button,
-  Space,
   Modal,
   Form,
   Input,
-  Upload,
   Switch,
-  InputNumber,
   message,
-  Popconfirm,
-  Image,
   Typography,
   Empty,
+  Tabs,
+  Select,
+  List,
+  Divider,
 } from 'antd';
 import {
   PlusOutlined,
@@ -24,13 +22,19 @@ import {
   DeleteOutlined,
   PictureOutlined,
   EyeOutlined,
-  ArrowUpOutlined,
-  ArrowDownOutlined,
 } from '@ant-design/icons';
 import api from '@/lib/api';
 import ImageUpload, { getImageUrl } from '@/components/admin/ImageUpload';
 
 const { Title, Text } = Typography;
+
+interface SlideItem {
+  imageUrl: string;
+  title: string;
+  subtitle: string;
+  buttonText: string;
+  buttonLink: string;
+}
 
 interface Banner {
   id: string;
@@ -39,6 +43,9 @@ interface Banner {
   buttonText: string;
   buttonLink: string;
   imageUrl: string;
+  slides: SlideItem[];
+  bannerType: string;
+  labelText: string;
   sortOrder: number;
   active: boolean;
   createdAt: string;
@@ -51,7 +58,8 @@ interface BannerFormData {
   buttonText: string;
   buttonLink: string;
   imageUrl: string;
-  sortOrder: number;
+  bannerType: string;
+  labelText: string;
   active: boolean;
 }
 
@@ -59,11 +67,15 @@ export default function BannersPage() {
   const [banners, setBanners] = useState<Banner[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
-  const [editingBanner, setEditingBanner] = useState<Banner | null>(null);
+  const [slideModalOpen, setSlideModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewImage, setPreviewImage] = useState('');
+  const [editingBanner, setEditingBanner] = useState<Banner | null>(null);
+  const [slides, setSlides] = useState<SlideItem[]>([]);
+  const [editingSlideIndex, setEditingSlideIndex] = useState<number | null>(null);
   const [form] = Form.useForm();
+  const [slideForm] = Form.useForm();
 
   const loadBanners = async () => {
     setLoading(true);
@@ -71,45 +83,7 @@ export default function BannersPage() {
       const res = await api.get('/api/admin/banners');
       setBanners(res.data.data || []);
     } catch {
-      // If API not ready, use mock data
-      setBanners([
-        {
-          id: '1',
-          title: 'Tuong Go Nghe Thuat',
-          subtitle: 'Tuong go dieu khac thu cong, mang dam ban sac van hoa Viet',
-          buttonText: 'Xem San Pham',
-          buttonLink: '/products',
-          imageUrl: 'https://images.unsplash.com/photo-1609167830220-7164aa360951?w=1600&q=80',
-          sortOrder: 1,
-          active: true,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-        {
-          id: '2',
-          title: 'Dieu Khac Thu Cong',
-          subtitle: 'Moi tac pham la mot tac pham nghe thuat doc nhat vo nhi',
-          buttonText: 'Lien He',
-          buttonLink: '/contact',
-          imageUrl: 'https://images.unsplash.com/photo-1545558014-8692077e9b5c?w=1600&q=80',
-          sortOrder: 2,
-          active: true,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-        {
-          id: '3',
-          title: 'Go Quy Tu Nhien',
-          subtitle: 'Go huong, go trac, go cam lai - chat luong cao cap',
-          buttonText: 'Xem Them',
-          buttonLink: '/products',
-          imageUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=1600&q=80',
-          sortOrder: 3,
-          active: true,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-      ]);
+      setBanners([]);
     } finally {
       setLoading(false);
     }
@@ -119,45 +93,48 @@ export default function BannersPage() {
     loadBanners();
   }, []);
 
-  const handleAdd = () => {
-    setEditingBanner(null);
-    form.resetFields();
-    form.setFieldsValue({
-      active: true,
-      sortOrder: banners.length + 1,
-      buttonText: 'Xem Them',
-      buttonLink: '/products',
-    });
-    setModalOpen(true);
-  };
+  const heroBanner = banners.find(b => b.bannerType === 'HERO' || !b.bannerType);
+  const editorialBanner = banners.find(b => b.bannerType === 'EDITORIAL');
 
-  const handleEdit = (banner: Banner) => {
+  const handleEdit = (banner: Banner | null, type: string) => {
     setEditingBanner(banner);
-    form.setFieldsValue(banner);
+    if (banner) {
+      form.setFieldsValue({
+        ...banner,
+      });
+      setSlides(banner.slides || []);
+    } else {
+      form.resetFields();
+      form.setFieldsValue({
+        active: true,
+        buttonText: type === 'HERO' ? 'Xem Them' : 'MUA NGAY',
+        buttonLink: '/products',
+        bannerType: type,
+        labelText: type === 'EDITORIAL' ? 'VONG TAY' : '',
+      });
+      setSlides([]);
+    }
     setModalOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
-    try {
-      await api.delete(`/api/admin/banners/${id}`);
-      message.success('Xoa banner thanh cong');
-      loadBanners();
-    } catch {
-      // Mock delete for demo
-      setBanners(banners.filter(b => b.id !== id));
-      message.success('Xoa banner thanh cong');
+  const normalizeImageUrl = (url: unknown): string => {
+    if (typeof url === 'object' && url !== null && 'url' in url) {
+      return (url as { url?: string }).url || '';
     }
+    return (url as string) || '';
   };
 
   const handleSave = async (values: BannerFormData) => {
     setSaving(true);
     try {
-      // Normalize imageUrl - extract URL string if it's an object
       const normalizedValues = {
         ...values,
-        imageUrl: typeof values.imageUrl === 'object' && values.imageUrl !== null
-          ? (values.imageUrl as { url?: string }).url
-          : values.imageUrl,
+        imageUrl: normalizeImageUrl(values.imageUrl),
+        slides: slides.map(s => ({
+          ...s,
+          imageUrl: normalizeImageUrl(s.imageUrl),
+        })),
+        sortOrder: values.bannerType === 'HERO' ? 1 : 2,
       };
 
       if (editingBanner) {
@@ -169,43 +146,28 @@ export default function BannersPage() {
       }
       setModalOpen(false);
       loadBanners();
-    } catch {
-      // Mock save for demo
-      if (editingBanner) {
-        setBanners(banners.map(b =>
-          b.id === editingBanner.id
-            ? { ...b, ...values, updatedAt: new Date().toISOString() }
-            : b
-        ));
-      } else {
-        setBanners([...banners, {
-          id: Date.now().toString(),
-          ...values,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        }]);
-      }
-      message.success(editingBanner ? 'Cap nhat banner thanh cong' : 'Tao banner thanh cong');
-      setModalOpen(false);
+    } catch (error) {
+      console.error('Save error:', error);
+      message.error('Co loi xay ra khi luu banner');
     } finally {
       setSaving(false);
     }
   };
 
-  const handleMoveUp = (index: number) => {
-    if (index === 0) return;
-    const newBanners = [...banners];
-    [newBanners[index], newBanners[index - 1]] = [newBanners[index - 1], newBanners[index]];
-    newBanners.forEach((b, i) => b.sortOrder = i + 1);
-    setBanners(newBanners);
-  };
-
-  const handleMoveDown = (index: number) => {
-    if (index === banners.length - 1) return;
-    const newBanners = [...banners];
-    [newBanners[index], newBanners[index + 1]] = [newBanners[index + 1], newBanners[index]];
-    newBanners.forEach((b, i) => b.sortOrder = i + 1);
-    setBanners(newBanners);
+  const handleDelete = async (id: string) => {
+    Modal.confirm({
+      title: 'Xac nhan xoa',
+      content: 'Ban co chac muon xoa banner nay?',
+      onOk: async () => {
+        try {
+          await api.delete(`/api/admin/banners/${id}`);
+          message.success('Xoa banner thanh cong');
+          loadBanners();
+        } catch {
+          message.error('Co loi khi xoa banner');
+        }
+      },
+    });
   };
 
   const handlePreview = (imageUrl: string) => {
@@ -213,152 +175,161 @@ export default function BannersPage() {
     setPreviewOpen(true);
   };
 
-  const columns = [
-    {
-      title: 'Thu tu',
-      dataIndex: 'sortOrder',
-      width: 100,
-      render: (_: number, __: Banner, index: number) => (
-        <Space>
-          <Button
-            type="text"
-            size="small"
-            icon={<ArrowUpOutlined />}
-            disabled={index === 0}
-            onClick={() => handleMoveUp(index)}
-          />
-          <Button
-            type="text"
-            size="small"
-            icon={<ArrowDownOutlined />}
-            disabled={index === banners.length - 1}
-            onClick={() => handleMoveDown(index)}
-          />
-        </Space>
-      ),
-    },
-    {
-      title: 'Hinh anh',
-      dataIndex: 'imageUrl',
-      width: 150,
-      render: (imageUrl: string) => (
-        <div
-          className="relative w-[120px] h-[70px] rounded overflow-hidden cursor-pointer group"
-          onClick={() => handlePreview(getImageUrl(imageUrl))}
-        >
-          <Image
-            src={getImageUrl(imageUrl)}
-            alt="Banner"
-            width={120}
-            height={70}
-            className="object-cover"
-            preview={false}
-          />
-          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
-            <EyeOutlined className="text-white text-lg" />
-          </div>
-        </div>
-      ),
-    },
-    {
-      title: 'Tieu de',
-      dataIndex: 'title',
-      render: (title: string, record: Banner) => (
-        <div>
-          <div className="font-medium">{title}</div>
-          <Text type="secondary" className="text-xs line-clamp-1">{record.subtitle}</Text>
-        </div>
-      ),
-    },
-    {
-      title: 'Nut bam',
-      dataIndex: 'buttonText',
-      width: 150,
-      render: (text: string, record: Banner) => (
-        <div>
-          <div>{text}</div>
-          <Text type="secondary" className="text-xs">{record.buttonLink}</Text>
-        </div>
-      ),
-    },
-    {
-      title: 'Trang thai',
-      dataIndex: 'active',
-      width: 100,
-      render: (active: boolean) => (
-        <span className={`px-2 py-1 rounded text-xs ${active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-          {active ? 'Hien thi' : 'An'}
-        </span>
-      ),
-    },
-    {
-      title: 'Thao tac',
-      width: 120,
-      render: (_: unknown, record: Banner) => (
-        <Space>
-          <Button
-            type="text"
-            icon={<EditOutlined />}
-            onClick={() => handleEdit(record)}
-          />
-          <Popconfirm
-            title="Xoa banner nay?"
-            description="Hanh dong nay khong the hoan tac"
-            onConfirm={() => handleDelete(record.id)}
-            okText="Xoa"
-            cancelText="Huy"
-            okButtonProps={{ danger: true }}
-          >
-            <Button type="text" danger icon={<DeleteOutlined />} />
-          </Popconfirm>
-        </Space>
-      ),
-    },
-  ];
+  // Slide handlers
+  const handleAddSlide = () => {
+    setEditingSlideIndex(null);
+    slideForm.resetFields();
+    slideForm.setFieldsValue({
+      buttonText: 'Xem Them',
+      buttonLink: '/products',
+    });
+    setSlideModalOpen(true);
+  };
 
-  return (
-    <div className="max-w-[1200px] mx-auto">
-      <div className="flex justify-between items-center mb-6">
+  const handleEditSlide = (index: number) => {
+    setEditingSlideIndex(index);
+    slideForm.setFieldsValue(slides[index]);
+    setSlideModalOpen(true);
+  };
+
+  const handleDeleteSlide = (index: number) => {
+    setSlides(slides.filter((_, i) => i !== index));
+  };
+
+  const handleSlideSubmit = (values: SlideItem) => {
+    const normalizedSlide = {
+      ...values,
+      imageUrl: normalizeImageUrl(values.imageUrl),
+    };
+
+    if (editingSlideIndex !== null) {
+      const newSlides = [...slides];
+      newSlides[editingSlideIndex] = normalizedSlide;
+      setSlides(newSlides);
+    } else {
+      setSlides([...slides, normalizedSlide]);
+    }
+    setSlideModalOpen(false);
+  };
+
+  const renderBannerCard = (banner: Banner | undefined, type: string, title: string, description: string) => (
+    <Card className="shadow-sm mb-6">
+      <div className="flex justify-between items-start mb-4">
         <div>
-          <Title level={3} className="!mb-1 flex items-center gap-2">
-            <PictureOutlined /> Quan ly Banner
-          </Title>
-          <Text type="secondary">Quan ly slideshow banner trang chu</Text>
+          <Title level={4} className="!mb-1">{title}</Title>
+          <Text type="secondary">{description}</Text>
         </div>
-        <Button type="primary" icon={<PlusOutlined />} size="large" onClick={handleAdd}>
-          Them Banner
+        <Button
+          type="primary"
+          icon={banner ? <EditOutlined /> : <PlusOutlined />}
+          onClick={() => handleEdit(banner || null, type)}
+        >
+          {banner ? 'Chinh sua' : 'Tao moi'}
         </Button>
       </div>
 
-      <Card className="shadow-sm">
-        <Table
-          dataSource={banners}
-          columns={columns}
-          rowKey="id"
-          loading={loading}
-          pagination={false}
-          locale={{
-            emptyText: (
-              <Empty
-                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                description="Chua co banner nao"
-              >
-                <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-                  Them Banner Dau Tien
-                </Button>
-              </Empty>
-            ),
-          }}
-        />
-      </Card>
+      {banner ? (
+        <div className="space-y-4">
+          <div className="flex items-center gap-4">
+            <span className={`px-2 py-1 rounded text-xs ${banner.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+              {banner.active ? 'Hien thi' : 'An'}
+            </span>
+            <span className="text-sm text-gray-500">
+              {type === 'HERO' ? `${banner.slides?.length || 0} slides` : banner.title}
+            </span>
+          </div>
 
-      {/* Edit/Add Modal */}
+          {type === 'HERO' && banner.slides && banner.slides.length > 0 ? (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {banner.slides.map((slide, index) => (
+                <div
+                  key={index}
+                  className="relative aspect-video rounded-lg overflow-hidden cursor-pointer group bg-gray-100"
+                  onClick={() => handlePreview(getImageUrl(slide.imageUrl))}
+                >
+                  <img
+                    src={getImageUrl(slide.imageUrl)}
+                    alt={slide.title || `Slide ${index + 1}`}
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                    <EyeOutlined className="text-white text-2xl" />
+                  </div>
+                  <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs p-2">
+                    <div className="font-medium truncate">{slide.title || `Slide ${index + 1}`}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : type === 'EDITORIAL' && banner.imageUrl ? (
+            <div
+              className="relative w-full max-w-md aspect-video rounded-lg overflow-hidden cursor-pointer group bg-gray-100"
+              onClick={() => handlePreview(getImageUrl(banner.imageUrl))}
+            >
+              <img
+                src={getImageUrl(banner.imageUrl)}
+                alt={banner.title}
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                <EyeOutlined className="text-white text-2xl" />
+              </div>
+              {banner.labelText && (
+                <div className="absolute top-2 left-2 bg-black text-white text-xs px-2 py-1">
+                  {banner.labelText}
+                </div>
+              )}
+            </div>
+          ) : (
+            <Empty description="Chua co anh" />
+          )}
+
+          <Button type="link" danger className="p-0" onClick={() => handleDelete(banner.id)}>
+            Xoa banner
+          </Button>
+        </div>
+      ) : (
+        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Chua co banner" />
+      )}
+    </Card>
+  );
+
+  return (
+    <div className="max-w-[1000px] mx-auto">
+      <div className="mb-6">
+        <Title level={3} className="!mb-1 flex items-center gap-2">
+          <PictureOutlined /> Quan ly Banner
+        </Title>
+        <Text type="secondary">Quan ly Hero slideshow va Editorial banner</Text>
+      </div>
+
+      {loading ? (
+        <Card loading />
+      ) : (
+        <>
+          {renderBannerCard(
+            heroBanner,
+            'HERO',
+            'Hero Banner (Slideshow)',
+            'Banner chinh trang chu voi nhieu slides, moi slide co title/subtitle/button rieng'
+          )}
+
+          {renderBannerCard(
+            editorialBanner,
+            'EDITORIAL',
+            'Editorial Banner',
+            'Banner giua trang voi hinh anh lon va noi dung quang cao'
+          )}
+        </>
+      )}
+
+      {/* Edit/Add Banner Modal */}
       <Modal
-        title={editingBanner ? 'Chinh sua Banner' : 'Them Banner moi'}
+        title={editingBanner ? 'Chinh sua Banner' : 'Tao Banner'}
         open={modalOpen}
         onCancel={() => setModalOpen(false)}
         footer={null}
-        width={700}
+        width={900}
         destroyOnClose
       >
         <Form
@@ -367,66 +338,180 @@ export default function BannersPage() {
           onFinish={handleSave}
           className="mt-4"
         >
+          <Form.Item name="bannerType" hidden>
+            <Input />
+          </Form.Item>
+
+          <Tabs
+            items={[
+              {
+                key: 'content',
+                label: 'Noi dung chinh',
+                children: (
+                  <div className="space-y-4">
+                    <Form.Item
+                      name="title"
+                      label="Tieu de chinh"
+                      rules={[{ required: true, message: 'Vui long nhap tieu de' }]}
+                    >
+                      <Input placeholder="Tieu de hien thi tren banner" size="large" />
+                    </Form.Item>
+
+                    <Form.Item name="subtitle" label="Mo ta ngan">
+                      <Input.TextArea rows={2} placeholder="Mo ta ngan gon" />
+                    </Form.Item>
+
+                    <Form.Item
+                      noStyle
+                      shouldUpdate={(prev, curr) => prev.bannerType !== curr.bannerType}
+                    >
+                      {({ getFieldValue }) =>
+                        getFieldValue('bannerType') === 'EDITORIAL' && (
+                          <Form.Item name="labelText" label="Label (nhan)">
+                            <Input placeholder="VD: VONG TAY" />
+                          </Form.Item>
+                        )
+                      }
+                    </Form.Item>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <Form.Item name="buttonText" label="Noi dung nut">
+                        <Input placeholder="Xem Them" />
+                      </Form.Item>
+                      <Form.Item name="buttonLink" label="Lien ket nut">
+                        <Input placeholder="/products" />
+                      </Form.Item>
+                    </div>
+
+                    <Form.Item name="active" label="Trang thai" valuePropName="checked">
+                      <Switch checkedChildren="Hien thi" unCheckedChildren="An" />
+                    </Form.Item>
+                  </div>
+                ),
+              },
+              {
+                key: 'slides',
+                label: form.getFieldValue('bannerType') === 'EDITORIAL' ? 'Hinh anh' : 'Slides',
+                children: (
+                  <div className="space-y-4">
+                    <Form.Item
+                      noStyle
+                      shouldUpdate={(prev, curr) => prev.bannerType !== curr.bannerType}
+                    >
+                      {({ getFieldValue }) =>
+                        getFieldValue('bannerType') === 'EDITORIAL' ? (
+                          <Form.Item name="imageUrl" label="Hinh anh banner">
+                            <ImageUpload folder="banners" placeholder="Upload hinh anh banner" />
+                          </Form.Item>
+                        ) : (
+                          <div>
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                              <p className="text-sm text-blue-700">
+                                Moi slide co the co title, subtitle va button rieng. Neu de trong, se dung noi dung chinh.
+                              </p>
+                            </div>
+
+                            <div className="flex justify-between items-center mb-3">
+                              <Text strong>Danh sach Slides ({slides.length})</Text>
+                              <Button type="primary" icon={<PlusOutlined />} onClick={handleAddSlide}>
+                                Them Slide
+                              </Button>
+                            </div>
+
+                            <List
+                              bordered
+                              dataSource={slides}
+                              locale={{ emptyText: 'Chua co slide nao' }}
+                              renderItem={(slide, index) => (
+                                <List.Item
+                                  actions={[
+                                    <Button key="edit" type="text" icon={<EditOutlined />} onClick={() => handleEditSlide(index)} />,
+                                    <Button key="delete" type="text" danger icon={<DeleteOutlined />} onClick={() => handleDeleteSlide(index)} />,
+                                  ]}
+                                >
+                                  <List.Item.Meta
+                                    avatar={
+                                      slide.imageUrl && (
+                                        <img
+                                          src={getImageUrl(slide.imageUrl)}
+                                          alt=""
+                                          className="w-20 h-12 object-cover rounded"
+                                        />
+                                      )
+                                    }
+                                    title={slide.title || `Slide ${index + 1}`}
+                                    description={slide.subtitle || 'Khong co mo ta'}
+                                  />
+                                </List.Item>
+                              )}
+                            />
+
+                            <Divider />
+
+                            <Form.Item
+                              name="imageUrl"
+                              label="Anh mac dinh (fallback)"
+                              help="Anh nay duoc su dung neu khong co slide nao"
+                            >
+                              <ImageUpload folder="banners" placeholder="Upload anh mac dinh" />
+                            </Form.Item>
+                          </div>
+                        )
+                      }
+                    </Form.Item>
+                  </div>
+                ),
+              },
+            ]}
+          />
+
+          <div className="flex justify-end gap-2 mt-6 pt-4 border-t">
+            <Button onClick={() => setModalOpen(false)}>Huy</Button>
+            <Button type="primary" htmlType="submit" loading={saving}>
+              {editingBanner ? 'Cap nhat' : 'Tao moi'}
+            </Button>
+          </div>
+        </Form>
+      </Modal>
+
+      {/* Slide Modal */}
+      <Modal
+        title={editingSlideIndex !== null ? 'Chinh sua Slide' : 'Them Slide'}
+        open={slideModalOpen}
+        onCancel={() => setSlideModalOpen(false)}
+        footer={null}
+        destroyOnClose
+      >
+        <Form form={slideForm} layout="vertical" onFinish={handleSlideSubmit} className="mt-4">
           <Form.Item
             name="imageUrl"
-            label="Hinh anh banner"
+            label="Hinh anh"
             rules={[{ required: true, message: 'Vui long upload hinh anh' }]}
           >
-            <ImageUpload
-              folder="banners"
-              placeholder="Upload hinh anh banner (kich thuoc khuyen nghi: 1920x800)"
-              showAttributes
-            />
+            <ImageUpload folder="banners" placeholder="Upload hinh anh slide" />
           </Form.Item>
 
-          <Form.Item
-            name="title"
-            label="Tieu de"
-            rules={[{ required: true, message: 'Vui long nhap tieu de' }]}
-          >
-            <Input placeholder="Tieu de banner" />
+          <Form.Item name="title" label="Tieu de (tuy chon)">
+            <Input placeholder="De trong de dung tieu de chinh" />
           </Form.Item>
 
-          <Form.Item
-            name="subtitle"
-            label="Mo ta ngan"
-            rules={[{ required: true, message: 'Vui long nhap mo ta' }]}
-          >
-            <Input.TextArea rows={2} placeholder="Mo ta ngan gon ve banner" />
+          <Form.Item name="subtitle" label="Mo ta (tuy chon)">
+            <Input.TextArea rows={2} placeholder="De trong de dung mo ta chinh" />
           </Form.Item>
 
           <div className="grid grid-cols-2 gap-4">
-            <Form.Item
-              name="buttonText"
-              label="Noi dung nut"
-              rules={[{ required: true, message: 'Vui long nhap noi dung nut' }]}
-            >
+            <Form.Item name="buttonText" label="Noi dung nut">
               <Input placeholder="Xem Them" />
             </Form.Item>
-
-            <Form.Item
-              name="buttonLink"
-              label="Lien ket nut"
-              rules={[{ required: true, message: 'Vui long nhap lien ket' }]}
-            >
+            <Form.Item name="buttonLink" label="Lien ket">
               <Input placeholder="/products" />
             </Form.Item>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <Form.Item name="sortOrder" label="Thu tu hien thi">
-              <InputNumber min={1} className="w-full" />
-            </Form.Item>
-
-            <Form.Item name="active" label="Trang thai" valuePropName="checked">
-              <Switch checkedChildren="Hien thi" unCheckedChildren="An" />
-            </Form.Item>
-          </div>
-
-          <div className="flex justify-end gap-2 mt-6">
-            <Button onClick={() => setModalOpen(false)}>Huy</Button>
-            <Button type="primary" htmlType="submit" loading={saving}>
-              {editingBanner ? 'Cap nhat' : 'Them moi'}
+          <div className="flex justify-end gap-2">
+            <Button onClick={() => setSlideModalOpen(false)}>Huy</Button>
+            <Button type="primary" htmlType="submit">
+              {editingSlideIndex !== null ? 'Cap nhat' : 'Them'}
             </Button>
           </div>
         </Form>
@@ -437,14 +522,9 @@ export default function BannersPage() {
         open={previewOpen}
         footer={null}
         onCancel={() => setPreviewOpen(false)}
-        width={900}
+        width={1000}
       >
-        <Image
-          src={previewImage}
-          alt="Preview"
-          width="100%"
-          preview={false}
-        />
+        <img src={previewImage} alt="Preview" className="w-full" />
       </Modal>
     </div>
   );

@@ -4,18 +4,22 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Category } from '@/types';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+
+// Helper to get full image URL
+function getImageUrl(path: string | undefined): string {
+  if (!path) return '';
+  if (path.startsWith('http')) return path;
+  if (path.startsWith('/uploads')) return `${API_URL}${path}`;
+  return path;
+}
+
+// Default fallback image
+const defaultImage = 'https://images.unsplash.com/photo-1609167830220-7164aa360951?w=800&q=80';
+
 interface CategoryShowcaseProps {
   categories: Category[];
 }
-
-const categoryImages: Record<string, string> = {
-  'vong-tay-tram-huong': '/uploads/categories/cat-vong-tay.jpg',
-  'tuong-phat-tram-huong': '/uploads/categories/cat-tuong-phat.jpg',
-  'chuoi-hat-tram': '/uploads/categories/cat-chuoi-hat.jpg',
-  'nhang-tram-huong': '/uploads/categories/cat-nhang.jpg',
-  'tinh-dau-tram': '/uploads/categories/cat-tinh-dau.jpg',
-  'go-tram-nguyen-khoi': '/uploads/categories/cat-go-nguyen-khoi.jpg',
-};
 
 export default function CategoryShowcase({ categories }: CategoryShowcaseProps) {
   if (categories.length === 0) return null;
@@ -47,9 +51,10 @@ export default function CategoryShowcase({ categories }: CategoryShowcaseProps) 
               className="group relative aspect-[4/5] md:aspect-[3/4] overflow-hidden bg-stone-100"
             >
               <Image
-                src={categoryImages[cat.slug] || '/uploads/categories/cat-vong-tay.jpg'}
+                src={getImageUrl(cat.imageUrl) || defaultImage}
                 alt={cat.name}
                 fill
+                unoptimized
                 className="object-cover transition-transform duration-1000 ease-out group-hover:scale-105"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
@@ -88,9 +93,10 @@ export default function CategoryShowcase({ categories }: CategoryShowcaseProps) 
                 className="group relative aspect-[3/4] overflow-hidden bg-stone-100"
               >
                 <Image
-                  src={categoryImages[cat.slug] || '/uploads/categories/cat-vong-tay.jpg'}
+                  src={getImageUrl(cat.imageUrl) || defaultImage}
                   alt={cat.name}
                   fill
+                  unoptimized
                   className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />

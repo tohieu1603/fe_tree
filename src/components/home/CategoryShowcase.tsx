@@ -9,35 +9,25 @@ interface CategoryShowcaseProps {
   categories: Category[];
 }
 
-// Mapping category slug -> image
-const categoryImages: Record<string, string> = {
-  // Trầm hương categories
-  'vong-tay': '/uploads/categories/cat-vong-tay.jpg',
-  'tuong-phat': '/uploads/categories/cat-tuong-phat.jpg',
-  'nhang-tram': '/uploads/categories/cat-nhang.jpg',
-  'tinh-dau': '/uploads/categories/cat-tinh-dau.jpg',
-  'chuoi-hat': '/uploads/categories/cat-chuoi-hat.jpg',
-  'go-nguyen-khoi': '/uploads/categories/cat-go-nguyen-khoi.jpg',
-  // Nội thất categories (dùng ảnh products)
-  'ban-ghe': '/uploads/products/but-tram-huong.jpg',
-  'giuong-ngu': '/uploads/products/go-tram-huong-nguyen-khoi.jpg',
-  'tu-ke': '/uploads/products/hat-tram-huong-108.jpg',
-  'sofa': '/uploads/products/nhang-tram-huong.jpg',
-  // Bài viết categories
-  'huong-dan': '/uploads/categories/cat-huong-dan.jpg',
-  'kien-thuc': '/uploads/categories/cat-kien-thuc.jpg',
-  'tin-tuc': '/uploads/categories/cat-tin-tuc.jpg',
-};
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+
+// Helper to get full image URL
+function getImageUrl(path: string | undefined): string {
+  if (!path) return '';
+  if (path.startsWith('http')) return path;
+  if (path.startsWith('/uploads')) return `${API_URL}${path}`;
+  return path;
+}
 
 // Default fallback image
-const defaultImage = '/uploads/categories/cat-vong-tay.jpg';
+const defaultImage = 'https://images.unsplash.com/photo-1609167830220-7164aa360951?w=800&q=80';
 
 // Fallback categories
 const defaultCategories = [
-  { id: 1, slug: 'vong-tay', name: 'Vòng Tay' },
-  { id: 2, slug: 'tuong-phat', name: 'Tượng Gỗ' },
-  { id: 3, slug: 'nhang-tram', name: 'Nhang Trầm' },
-  { id: 4, slug: 'tinh-dau', name: 'Tinh Dầu' },
+  { id: 1, slug: 'vong-tay', name: 'Vòng Tay', imageUrl: '' },
+  { id: 2, slug: 'tuong-phat', name: 'Tượng Gỗ', imageUrl: '' },
+  { id: 3, slug: 'nhang-tram', name: 'Nhang Trầm', imageUrl: '' },
+  { id: 4, slug: 'tinh-dau', name: 'Tinh Dầu', imageUrl: '' },
 ];
 
 export default function CategoryShowcase({ categories }: CategoryShowcaseProps) {
@@ -45,6 +35,11 @@ export default function CategoryShowcase({ categories }: CategoryShowcaseProps) 
   const displayCategories = categories.length >= 4
     ? categories.slice(0, 4)
     : defaultCategories;
+
+  // Get section title/subtitle - priority: first category with sectionTitle > settings > default
+  const firstCategoryWithSection = categories.find(c => c.sectionTitle || c.sectionSubtitle);
+  const sectionTitle = firstCategoryWithSection?.sectionTitle || settings.categorySectionTitle || 'Tinh Hoa Tram Huong';
+  const sectionSubtitle = firstCategoryWithSection?.sectionSubtitle || settings.categorySectionSubtitle || 'Curated By Duc Viet';
 
   return (
     <section style={{ backgroundColor: 'var(--bg-light)' }}>
@@ -54,13 +49,13 @@ export default function CategoryShowcase({ categories }: CategoryShowcaseProps) 
           className="text-[11px] tracking-[0.3em] uppercase mb-4"
           style={{ color: 'color-mix(in srgb, var(--text-dark) 40%, transparent)' }}
         >
-          {settings.categorySectionSubtitle || 'Curated By Duc Viet'}
+          {sectionSubtitle}
         </p>
         <h2
           className="text-lg md:text-xl tracking-[0.15em] uppercase font-normal"
           style={{ fontFamily: 'var(--font-heading)', color: 'var(--text-dark)' }}
         >
-          {settings.categorySectionTitle || 'Tinh Hoa Tram Huong'}
+          {sectionTitle}
         </h2>
       </div>
 
@@ -76,9 +71,10 @@ export default function CategoryShowcase({ categories }: CategoryShowcaseProps) 
               {/* Product Image - Nền xám nhạt như Gucci với hover mượt */}
               <div className="aspect-[3/4] relative overflow-hidden bg-[#f0f0f0]">
                 <Image
-                  src={categoryImages[category.slug] || defaultImage}
+                  src={getImageUrl(category.imageUrl) || defaultImage}
                   alt={category.name}
                   fill
+                  unoptimized
                   className="object-cover transition-transform duration-[1.2s] ease-[cubic-bezier(0.25,0.1,0.25,1)] group-hover:scale-[1.03]"
                 />
               </div>

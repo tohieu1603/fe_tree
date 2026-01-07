@@ -4,6 +4,16 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useSiteSettings } from '@/contexts/SiteSettingsContext';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+
+// Helper to get full image URL
+function getImageUrl(path: string | undefined): string {
+  if (!path) return '';
+  if (path.startsWith('http')) return path;
+  if (path.startsWith('/uploads')) return `${API_URL}${path}`;
+  return path;
+}
+
 const defaultServices = [
   {
     title: 'GIAO HANG TAN NOI',
@@ -53,9 +63,10 @@ export default function ServiceSection() {
               {/* Service Image with play button overlay style */}
               <div className="relative aspect-square overflow-hidden bg-[#f5f5f5] mb-8">
                 <Image
-                  src={service.imageUrl || '/uploads/products/vong-tay-tram-huong-1.jpg'}
+                  src={getImageUrl(service.imageUrl) || 'https://images.unsplash.com/photo-1609167830220-7164aa360951?w=800&q=80'}
                   alt={service.title}
                   fill
+                  unoptimized
                   className="object-cover transition-transform duration-700 group-hover:scale-105"
                 />
                 {/* Play button overlay like Gucci */}

@@ -34,6 +34,8 @@ export interface Category {
   description?: string;
   icon?: string;
   imageUrl?: string;
+  sectionTitle?: string;
+  sectionSubtitle?: string;
   sortOrder: number;
   active: boolean;
   articleCount: number;
@@ -110,6 +112,8 @@ export interface CategoryRequest {
   description?: string;
   icon?: string;
   imageUrl?: string;
+  sectionTitle?: string;
+  sectionSubtitle?: string;
   sortOrder?: number;
   active?: boolean;
   parentId?: string;

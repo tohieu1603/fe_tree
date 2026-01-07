@@ -52,6 +52,8 @@ export default function CategoriesPage() {
         slug: category.slug,
         description: category.description,
         imageUrl: category.imageUrl,
+        sectionTitle: category.sectionTitle,
+        sectionSubtitle: category.sectionSubtitle,
         sortOrder: category.sortOrder,
         active: category.active,
       });
@@ -287,6 +289,22 @@ export default function CategoriesPage() {
 
           <Form.Item name="imageUrl" label="Ảnh danh mục" extra="Ảnh thumbnail hiển thị ở trang chủ và trang danh mục">
             <ImageUpload folder="categories" placeholder="Upload ảnh danh mục (khuyến nghị: 800x600px)" showAttributes />
+          </Form.Item>
+
+          <Form.Item
+            name="sectionTitle"
+            label="Tiêu đề Section (Trang chủ)"
+            extra="Tiêu đề hiển thị trên section của danh mục ở trang chủ. VD: TINH HOA TRAM HUONG"
+          >
+            <Input placeholder="VD: TINH HOA TRAM HUONG" />
+          </Form.Item>
+
+          <Form.Item
+            name="sectionSubtitle"
+            label="Phụ đề Section"
+            extra="Phụ đề nhỏ hiển thị bên dưới tiêu đề. VD: CURATED BY DUC VIET"
+          >
+            <Input placeholder="VD: CURATED BY DUC VIET" />
           </Form.Item>
 
           <Row gutter={16}>

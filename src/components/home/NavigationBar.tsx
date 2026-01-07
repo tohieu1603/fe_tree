@@ -2,18 +2,31 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Category } from '@/types';
+import { useSiteSettings } from '@/contexts/SiteSettingsContext';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+
+// Helper to get full image URL
+function getImageUrl(path: string | undefined): string {
+  if (!path) return '';
+  if (path.startsWith('http')) return path;
+  if (path.startsWith('/uploads')) return `${API_URL}${path}`;
+  return path;
+}
 
 interface NavigationBarProps {
   categories: Category[];
 }
 
 export default function NavigationBar({ categories }: NavigationBarProps) {
+  const { settings } = useSiteSettings();
   const [mobileOpen, setMobileOpen] = useState(false);
   const progressRef = useRef(0);
   const targetRef = useRef(0);
   const headerRef = useRef<HTMLElement>(null);
-  const logoRef = useRef<HTMLSpanElement>(null);
+  const logoRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let rafId: number;
@@ -79,22 +92,21 @@ export default function NavigationBar({ categories }: NavigationBarProps) {
       >
         <div className="max-w-[1400px] mx-auto px-6 md:px-12">
           <div className="flex items-center justify-between h-16 md:h-20">
-            {/* Left nav */}
+            {/* Left nav - dynamic from settings */}
             <nav className="hidden lg:flex items-center gap-12">
-              <Link
-                href="/products"
-                className="text-[13px] tracking-[0.2em] uppercase hover:opacity-60 transition-opacity font-medium"
-                style={{ fontFamily: 'var(--font-heading)' }}
-              >
-                Bộ Sưu Tập
-              </Link>
-              <Link
-                href="/articles"
-                className="text-[13px] tracking-[0.2em] uppercase hover:opacity-60 transition-opacity font-medium"
-                style={{ fontFamily: 'var(--font-heading)' }}
-              >
-                Câu Chuyện
-              </Link>
+              {(settings.navLeftMenu?.length > 0 ? settings.navLeftMenu : [
+                { label: 'Bộ Sưu Tập', href: '/products' },
+                { label: 'Câu Chuyện', href: '/articles' },
+              ]).map((item, index) => (
+                <Link
+                  key={index}
+                  href={item.href}
+                  className="text-[13px] tracking-[0.2em] uppercase hover:opacity-60 transition-opacity font-medium"
+                  style={{ fontFamily: 'var(--font-heading)' }}
+                >
+                  {item.label}
+                </Link>
+              ))}
             </nav>
 
             {/* Center logo */}
@@ -102,35 +114,50 @@ export default function NavigationBar({ categories }: NavigationBarProps) {
               href="/"
               className="absolute left-1/2 -translate-x-1/2"
             >
-              <span
+              <div
                 ref={logoRef}
-                className="text-xl md:text-2xl tracking-[0.25em] uppercase font-normal"
                 style={{
-                  fontFamily: 'var(--font-heading)',
                   opacity: 0,
-                  transition: 'color 0.3s',
+                  transition: 'opacity 0.3s',
                 }}
               >
-                Duc Viet
-              </span>
+                {getImageUrl(settings.logoUrl) ? (
+                  <Image
+                    src={getImageUrl(settings.logoUrl)}
+                    alt={settings.siteName || 'Logo'}
+                    width={120}
+                    height={40}
+                    unoptimized
+                    className="h-8 md:h-10 w-auto object-contain"
+                  />
+                ) : (
+                  <span
+                    className="text-xl md:text-2xl tracking-[0.25em] uppercase font-normal"
+                    style={{
+                      fontFamily: 'var(--font-heading)',
+                    }}
+                  >
+                    {settings.siteName || 'Duc Viet'}
+                  </span>
+                )}
+              </div>
             </Link>
 
-            {/* Right nav */}
+            {/* Right nav - dynamic from settings */}
             <nav className="hidden lg:flex items-center gap-12">
-              <Link
-                href="/about"
-                className="text-[13px] tracking-[0.2em] uppercase hover:opacity-60 transition-opacity font-medium"
-                style={{ fontFamily: 'var(--font-heading)' }}
-              >
-                Về Chúng Tôi
-              </Link>
-              <Link
-                href="/contact"
-                className="text-[13px] tracking-[0.2em] uppercase hover:opacity-60 transition-opacity font-medium"
-                style={{ fontFamily: 'var(--font-heading)' }}
-              >
-                Liên Hệ
-              </Link>
+              {(settings.navRightMenu?.length > 0 ? settings.navRightMenu : [
+                { label: 'Về Chúng Tôi', href: '/about' },
+                { label: 'Liên Hệ', href: '/contact' },
+              ]).map((item, index) => (
+                <Link
+                  key={index}
+                  href={item.href}
+                  className="text-[13px] tracking-[0.2em] uppercase hover:opacity-60 transition-opacity font-medium"
+                  style={{ fontFamily: 'var(--font-heading)' }}
+                >
+                  {item.label}
+                </Link>
+              ))}
             </nav>
 
             {/* Mobile menu button */}
@@ -171,26 +198,69 @@ export default function NavigationBar({ categories }: NavigationBarProps) {
                 </svg>
               </button>
 
-              <div
-                className="text-xl tracking-[0.25em] uppercase font-normal mb-12"
-                style={{
-                  fontFamily: 'var(--font-heading)',
-                  color: 'var(--text-dark)',
-                }}
-              >
-                Duc Viet
+              <div className="mb-12">
+                {getImageUrl(settings.logoUrl) ? (
+                  <Image
+                    src={getImageUrl(settings.logoUrl)}
+                    alt={settings.siteName || 'Logo'}
+                    width={120}
+                    height={40}
+                    unoptimized
+                    className="h-10 w-auto object-contain"
+                  />
+                ) : (
+                  <div
+                    className="text-xl tracking-[0.25em] uppercase font-normal"
+                    style={{
+                      fontFamily: 'var(--font-heading)',
+                      color: 'var(--text-dark)',
+                    }}
+                  >
+                    {settings.siteName || 'Duc Viet'}
+                  </div>
+                )}
               </div>
 
               <nav className="space-y-1">
-                {[
-                  { href: '/', label: 'Trang Chủ' },
-                  { href: '/products', label: 'Bộ Sưu Tập' },
-                  { href: '/articles', label: 'Câu Chuyện' },
-                  { href: '/about', label: 'Về Chúng Tôi' },
-                  { href: '/contact', label: 'Liên Hệ' },
-                ].map((item) => (
+                {/* Home link always first */}
+                <Link
+                  href="/"
+                  onClick={() => setMobileOpen(false)}
+                  className="block py-4 text-base tracking-[0.12em] uppercase border-b hover:pl-3 transition-all"
+                  style={{
+                    fontFamily: 'var(--font-heading)',
+                    color: 'var(--text-dark)',
+                    borderColor: 'color-mix(in srgb, var(--color-primary) 15%, transparent)',
+                  }}
+                >
+                  Trang Chủ
+                </Link>
+                {/* Left menu items */}
+                {(settings.navLeftMenu?.length > 0 ? settings.navLeftMenu : [
+                  { label: 'Bộ Sưu Tập', href: '/products' },
+                  { label: 'Câu Chuyện', href: '/articles' },
+                ]).map((item, index) => (
                   <Link
-                    key={item.href}
+                    key={`left-${index}`}
+                    href={item.href}
+                    onClick={() => setMobileOpen(false)}
+                    className="block py-4 text-base tracking-[0.12em] uppercase border-b hover:pl-3 transition-all"
+                    style={{
+                      fontFamily: 'var(--font-heading)',
+                      color: 'var(--text-dark)',
+                      borderColor: 'color-mix(in srgb, var(--color-primary) 15%, transparent)',
+                    }}
+                  >
+                    {item.label}
+                  </Link>
+                ))}
+                {/* Right menu items */}
+                {(settings.navRightMenu?.length > 0 ? settings.navRightMenu : [
+                  { label: 'Về Chúng Tôi', href: '/about' },
+                  { label: 'Liên Hệ', href: '/contact' },
+                ]).map((item, index) => (
+                  <Link
+                    key={`right-${index}`}
                     href={item.href}
                     onClick={() => setMobileOpen(false)}
                     className="block py-4 text-base tracking-[0.12em] uppercase border-b hover:pl-3 transition-all"

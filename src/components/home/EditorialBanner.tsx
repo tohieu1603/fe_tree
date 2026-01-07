@@ -1,24 +1,82 @@
 'use client';
 
-import Image from 'next/image';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+
+// Helper to get full image URL
+function getImageUrl(path: string | undefined): string {
+  if (!path) return '';
+  if (path.startsWith('http')) return path;
+  if (path.startsWith('/uploads')) return `${API_URL}${path}`;
+  return path;
+}
+
+interface Banner {
+  id: string;
+  imageUrl: string;
+  bannerType: string;
+  labelText: string;
+  title: string;
+  subtitle: string;
+  buttonText: string;
+  buttonLink: string;
+  active: boolean;
+}
+
+// Default values
+const defaultBanner = {
+  imageUrl: 'https://images.unsplash.com/photo-1609167830220-7164aa360951?w=1600&q=80',
+  labelText: 'VONG TAY',
+  title: 'Vong Tay Tram Huong',
+  buttonText: 'MUA NGAY',
+  buttonLink: '/products/category/vong-tay',
+};
+
 export default function EditorialBanner() {
+  const [banner, setBanner] = useState<Banner | null>(null);
+
+  useEffect(() => {
+    const fetchBanner = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/public/banners`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.data && data.data.length > 0) {
+            // Find EDITORIAL banner
+            const editorialBanner = data.data.find((b: Banner) => b.bannerType === 'EDITORIAL');
+            if (editorialBanner && editorialBanner.active) {
+              setBanner(editorialBanner);
+            }
+          }
+        }
+      } catch {
+        // Use default values on error
+      }
+    };
+    fetchBanner();
+  }, []);
+
+  const displayImage = getImageUrl(banner?.imageUrl) || getImageUrl(defaultBanner.imageUrl);
+  const displayLabel = banner?.labelText || defaultBanner.labelText;
+  const displayTitle = banner?.title || defaultBanner.title;
+  const displayButton = banner?.buttonText || defaultBanner.buttonText;
+  const displayLink = banner?.buttonLink || defaultBanner.buttonLink;
+
   return (
     <section className="px-[18px]">
       {/* Banner với margin 2 bên - Giống Gucci */}
       <Link
-        href="/category/vong-tay"
+        href={displayLink}
         className="group block relative w-full h-[70vh] md:h-[85vh] overflow-hidden"
       >
         {/* Background Image with smooth zoom on hover */}
         <div className="absolute inset-0 overflow-hidden">
-          <Image
-            src="/uploads/products/vong-tay-tram-huong-1.jpg"
-            alt="Vong Tay Tram Huong"
-            fill
-            className="object-cover transition-transform duration-[1.2s] ease-[cubic-bezier(0.25,0.1,0.25,1)] group-hover:scale-[1.03]"
-            priority
+          <img
+            src={displayImage}
+            alt={displayTitle}
+            className="w-full h-full object-cover transition-transform duration-[1.2s] ease-[cubic-bezier(0.25,0.1,0.25,1)] group-hover:scale-[1.03]"
           />
         </div>
 
@@ -32,7 +90,7 @@ export default function EditorialBanner() {
               color: '#ffffff',
             }}
           >
-            VONG TAY
+            {displayLabel}
           </div>
 
           {/* Bottom section - Title + Button */}
@@ -45,7 +103,7 @@ export default function EditorialBanner() {
                 color: '#ffffff',
               }}
             >
-              Vong Tay Tram Huong
+              {displayTitle}
             </h2>
 
             {/* Shop Now Button - Gucci style */}
@@ -54,7 +112,7 @@ export default function EditorialBanner() {
                          transition-all duration-300 ease-out
                          hover:bg-white hover:text-black"
             >
-              MUA NGAY
+              {displayButton}
             </button>
           </div>
         </div>

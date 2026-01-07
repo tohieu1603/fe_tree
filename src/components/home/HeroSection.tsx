@@ -1,11 +1,61 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
-import Image from 'next/image';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useSiteSettings } from '@/contexts/SiteSettingsContext';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+
+// Helper to get full image URL
+function getImageUrl(path: string | undefined): string {
+  if (!path) return '';
+  if (path.startsWith('http')) return path;
+  if (path.startsWith('/uploads')) return `${API_URL}${path}`;
+  return path;
+}
+
+interface SlideItem {
+  imageUrl: string;
+  title: string;
+  subtitle: string;
+  buttonText: string;
+  buttonLink: string;
+}
+
+interface Banner {
+  id: string;
+  imageUrl: string;
+  slides: SlideItem[];
+  bannerType: string;
+  title: string;
+  subtitle: string;
+  buttonText: string;
+  buttonLink: string;
+}
+
+// Default fallback slides
+const defaultSlides: SlideItem[] = [
+  {
+    imageUrl: 'https://images.unsplash.com/photo-1602498498304-c9eec1a5f04f?w=1920&q=90',
+    title: '',
+    subtitle: '',
+    buttonText: '',
+    buttonLink: '',
+  },
+  {
+    imageUrl: 'https://images.unsplash.com/photo-1609167830220-7164aa360951?w=1920&q=90',
+    title: '',
+    subtitle: '',
+    buttonText: '',
+    buttonLink: '',
+  },
+];
 
 export default function HeroSection() {
   const { settings } = useSiteSettings();
+  const [slides, setSlides] = useState<SlideItem[]>(defaultSlides);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [banner, setBanner] = useState<Banner | null>(null);
+
   const progressRef = useRef(0);
   const targetRef = useRef(0);
   const containerRef = useRef<HTMLElement>(null);
@@ -14,6 +64,60 @@ export default function HeroSection() {
   const indicatorRef = useRef<HTMLDivElement>(null);
   const bgRef = useRef<HTMLDivElement>(null);
 
+  // Fetch first active HERO banner
+  useEffect(() => {
+    const fetchBanner = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/public/banners`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.data && data.data.length > 0) {
+            // Find HERO banner
+            const heroBanner = data.data.find((b: Banner) => b.bannerType === 'HERO' || !b.bannerType) || data.data[0];
+            setBanner(heroBanner);
+
+            // Use slides array if available, otherwise create from imageUrl
+            if (heroBanner.slides && heroBanner.slides.length > 0) {
+              const bannerSlides = heroBanner.slides.map((slide: SlideItem) => ({
+                ...slide,
+                imageUrl: getImageUrl(slide.imageUrl),
+              }));
+              setSlides(bannerSlides);
+            } else if (heroBanner.imageUrl) {
+              setSlides([{
+                imageUrl: getImageUrl(heroBanner.imageUrl),
+                title: heroBanner.title || '',
+                subtitle: heroBanner.subtitle || '',
+                buttonText: heroBanner.buttonText || '',
+                buttonLink: heroBanner.buttonLink || '',
+              }]);
+            }
+          }
+        }
+      } catch {
+        // Use default slides on error
+      }
+    };
+    fetchBanner();
+  }, []);
+
+  // Get current slide content (fallback to banner defaults)
+  const currentSlide = slides[currentIndex] || slides[0];
+  const displayTitle = currentSlide?.title || banner?.title || settings.siteName || 'DUC VIET';
+  const displaySubtitle = currentSlide?.subtitle || banner?.subtitle || settings.heroSubtitle || 'Tinh Hoa Thiên Nhiên • Nghệ Thuật Thủ Công';
+
+  // Auto-advance carousel
+  const nextImage = useCallback(() => {
+    setCurrentIndex((prev) => (prev + 1) % slides.length);
+  }, [slides.length]);
+
+  useEffect(() => {
+    if (slides.length <= 1) return;
+    const timer = setInterval(nextImage, 5000);
+    return () => clearInterval(timer);
+  }, [nextImage, slides.length]);
+
+  // Scroll animation
   useEffect(() => {
     let rafId: number;
 
@@ -78,20 +182,22 @@ export default function HeroSection() {
       className="relative h-screen w-full overflow-hidden"
       style={{ backgroundColor: 'var(--bg-dark)' }}
     >
-      {/* Background - Trầm hương atmosphere */}
+      {/* Background carousel */}
       <div
         ref={bgRef}
         className="absolute inset-0 will-change-transform"
         style={{ transformOrigin: 'center center' }}
       >
-        <Image
-          src="https://images.unsplash.com/photo-1602498498304-c9eec1a5f04f?w=1920&q=90"
-          alt="Trầm Hương"
-          fill
-          priority
-          className="object-cover"
-          sizes="100vw"
-        />
+        {slides.map((slide, index) => (
+          <img
+            key={index}
+            src={slide.imageUrl}
+            alt={slide.title || `Banner ${index + 1}`}
+            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
+              index === currentIndex ? 'opacity-100' : 'opacity-0'
+            }`}
+          />
+        ))}
         {/* Dark warm overlay */}
         <div
           className="absolute inset-0"
@@ -112,7 +218,7 @@ export default function HeroSection() {
             style={{
               color: 'var(--text-light)',
               fontFamily: 'var(--font-heading)',
-              fontSize: `min(${Math.max(8, 18 - ((settings.siteName || 'DUC VIET').length - 2) * 1.2)}vw, ${Math.max(80, 280 - ((settings.siteName || 'DUC VIET').length - 2) * 15)}px)`,
+              fontSize: `min(${Math.max(8, 18 - (displayTitle.length - 2) * 1.2)}vw, ${Math.max(80, 280 - (displayTitle.length - 2) * 15)}px)`,
               fontWeight: 300,
               letterSpacing: '0.15em',
               textTransform: 'uppercase',
@@ -120,7 +226,7 @@ export default function HeroSection() {
               userSelect: 'none',
             }}
           >
-            {settings.siteName || 'DUC VIET'}
+            {displayTitle}
           </h1>
         </div>
       </div>
@@ -138,9 +244,27 @@ export default function HeroSection() {
             textTransform: 'uppercase',
           }}
         >
-          {settings.heroSubtitle || 'Tinh Hoa Thiên Nhiên • Nghệ Thuật Thủ Công'}
+          {displaySubtitle}
         </p>
       </div>
+
+      {/* Carousel indicators */}
+      {slides.length > 1 && (
+        <div className="absolute bottom-32 left-1/2 -translate-x-1/2 z-20 flex gap-2">
+          {slides.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => setCurrentIndex(index)}
+              className={`w-2 h-2 rounded-full transition-all ${
+                index === currentIndex
+                  ? 'bg-white/80 w-6'
+                  : 'bg-white/30 hover:bg-white/50'
+              }`}
+              aria-label={`Go to slide ${index + 1}`}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Scroll indicator */}
       <div

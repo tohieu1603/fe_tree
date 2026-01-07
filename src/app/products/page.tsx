@@ -1,314 +1,491 @@
+'use client';
+
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Product, Category, ApiResponse } from '@/types';
-import Navbar from '@/components/Navbar';
+import { Product, Category, ApiResponse, PageResponse } from '@/types';
+import { useSiteSettings } from '@/contexts/SiteSettingsContext';
+import NavigationBar from '@/components/home/NavigationBar';
+import FooterSection from '@/components/home/FooterSection';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
-async function getProducts(): Promise<Product[]> {
-  try {
-    const res = await fetch(`${API_URL}/api/public/products?size=50`, { next: { revalidate: 60 } });
-    if (!res.ok) return [];
-    const data = await res.json();
-    return data.data?.content || data.data || [];
-  } catch {
-    return [];
-  }
-}
-
-async function getCategories(): Promise<Category[]> {
-  try {
-    const res = await fetch(`${API_URL}/api/public/categories`, { next: { revalidate: 60 } });
-    if (!res.ok) return [];
-    const data: ApiResponse<Category[]> = await res.json();
-    return data.data.filter(cat => cat.sortOrder >= 10);
-  } catch {
-    return [];
-  }
-}
+type SortOption = 'newest' | 'price_asc' | 'price_desc' | 'name_asc';
 
 function formatPrice(price?: number): string {
-  if (!price) return 'Lien he';
+  if (!price) return 'Liên hệ';
   return new Intl.NumberFormat('vi-VN').format(price) + ' đ';
 }
 
-function calculateDiscount(price?: number, originalPrice?: number): number | null {
-  if (!price || !originalPrice || originalPrice <= price) return null;
-  return Math.round(((originalPrice - price) / originalPrice) * 100);
-}
+// Product Card - Gucci style
+function ProductCard({ product, siteName }: { product: Product; siteName?: string }) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isHovered, setIsHovered] = useState(false);
 
-export const metadata = {
-  title: 'Sản Phẩm',
-};
+  const allImages = [
+    product.featuredImage,
+    ...(product.images || [])
+  ].filter(Boolean) as string[];
 
-export default async function ProductsPage() {
-  const [products, categories] = await Promise.all([getProducts(), getCategories()]);
+  const totalImages = allImages.length;
+  const hasMultiple = totalImages > 1;
+
+  const goNext = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setCurrentIndex(prev => (prev + 1) % totalImages);
+  };
+
+  const goPrev = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setCurrentIndex(prev => (prev - 1 + totalImages) % totalImages);
+  };
 
   return (
-    <div className="min-h-screen bg-stone-50">
-      <Navbar categories={categories} />
+    <div
+      className="group relative"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => {
+        setIsHovered(false);
+        setCurrentIndex(0);
+      }}
+    >
+      <Link href={`/product/${product.slug}`} className="block">
+        {/* Image Container */}
+        <div className="relative" style={{ aspectRatio: '313/417', backgroundColor: 'var(--bg-light)' }}>
+          <div className="absolute inset-x-0 top-1/2 -translate-y-1/2" style={{ aspectRatio: '1/1', margin: '0 auto', width: '100%', maxHeight: '75%' }}>
+            {allImages.length > 0 ? (
+              <div className="relative w-full h-full flex items-center justify-center p-[8%]">
+                <div className="relative w-full h-full">
+                  <Image
+                    src={allImages[currentIndex]}
+                    alt={product.name}
+                    fill
+                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                    className="object-contain"
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <span style={{ color: 'var(--color-primary)', opacity: 0.1 }} className="text-7xl font-light">
+                  {siteName?.[0] || 'T'}
+                </span>
+              </div>
+            )}
+          </div>
 
-      {/* Hero Banner */}
-      <section className="relative h-[280px] bg-stone-800 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-stone-900/90 to-stone-800/70" />
+          {/* Progress Bar */}
+          {hasMultiple && (
+            <div
+              className={`absolute bottom-0 left-0 right-0 h-[2px] transition-opacity duration-200 ${
+                isHovered ? 'opacity-100' : 'opacity-0'
+              }`}
+              style={{ backgroundColor: 'color-mix(in srgb, var(--text-dark) 10%, transparent)' }}
+            >
+              <div
+                className="h-full transition-all duration-200"
+                style={{
+                  width: `${((currentIndex + 1) / totalImages) * 100}%`,
+                  backgroundColor: 'color-mix(in srgb, var(--text-dark) 80%, transparent)'
+                }}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Product Info */}
+        <div className="pt-4">
+          <h3
+            className="text-[13px] leading-[1.4] line-clamp-2"
+            style={{ color: 'var(--text-dark)' }}
+          >
+            {product.name}
+          </h3>
+          <p
+            className="text-[13px] mt-1"
+            style={{ color: 'var(--text-dark)' }}
+          >
+            {formatPrice(product.price)}
+          </p>
+        </div>
+      </Link>
+
+      {/* Navigation Arrows */}
+      {hasMultiple && (
+        <>
+          <button
+            onClick={goPrev}
+            className={`absolute left-0 top-[37.5%] -translate-x-1/2 -translate-y-1/2 z-20 w-8 h-8 flex items-center justify-center
+              transition-opacity duration-200 ${isHovered ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+            aria-label="Previous"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <path d="M15 18L9 12L15 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ stroke: 'var(--text-dark)' }} />
+            </svg>
+          </button>
+          <button
+            onClick={goNext}
+            className={`absolute right-0 top-[37.5%] translate-x-1/2 -translate-y-1/2 z-20 w-8 h-8 flex items-center justify-center
+              transition-opacity duration-200 ${isHovered ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+            aria-label="Next"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <path d="M9 18L15 12L9 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ stroke: 'var(--text-dark)' }} />
+            </svg>
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
+export default function ProductsPage() {
+  const { settings } = useSiteSettings();
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [sortBy, setSortBy] = useState<SortOption>('newest');
+  const [showFilters, setShowFilters] = useState(false);
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      // Fetch categories
+      const catsRes = await fetch(`${API_URL}/api/public/categories`);
+      if (catsRes.ok) {
+        const catsData: ApiResponse<Category[]> = await catsRes.json();
+        setCategories(catsData.data.filter(c => c.sortOrder >= 10));
+      }
+
+      // Build products URL
+      const sort = sortBy === 'newest' ? 'createdAt,desc'
+        : sortBy === 'price_asc' ? 'price,asc'
+        : sortBy === 'price_desc' ? 'price,desc'
+        : 'name,asc';
+
+      let url = `${API_URL}/api/public/products?page=${page}&size=12&sort=${sort}`;
+      if (selectedCategory) {
+        url = `${API_URL}/api/public/products?categorySlug=${selectedCategory}&page=${page}&size=12&sort=${sort}`;
+      }
+
+      const prodRes = await fetch(url);
+      if (prodRes.ok) {
+        const prodData = await prodRes.json();
+        const pageData: PageResponse<Product> = prodData.data;
+        setProducts(pageData.content || []);
+        setTotalPages(pageData.totalPages);
+        setTotalElements(pageData.totalElements);
+      }
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [sortBy, page, selectedCategory]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--bg-light)' }}>
         <div
-          className="absolute inset-0 opacity-30"
-          style={{
-            backgroundImage: 'url(https://images.unsplash.com/photo-1609167830220-7164aa360951?w=1600&q=80)',
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-          }}
+          className="w-6 h-6 border border-t-transparent rounded-full animate-spin"
+          style={{ borderColor: 'var(--color-primary)', borderTopColor: 'transparent' }}
         />
-        <div className="relative z-10 max-w-7xl mx-auto px-4 h-full flex flex-col justify-center">
-          <nav className="text-sm text-stone-400 mb-4 pt-16">
-            <Link href="/" className="hover:text-white transition">Trang chu</Link>
-            <span className="mx-2">/</span>
-            <span className="text-white">San pham</span>
-          </nav>
-          <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">Bo Suu Tap Tuong Go</h1>
-          <p className="text-stone-300 max-w-xl">
-            Kham pha cac tac pham tuong go dieu khac thu cong, mang dam ban sac van hoa Viet Nam
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-light)' }}>
+      {/* Navigation */}
+      <NavigationBar categories={categories} />
+
+      {/* Hero Section */}
+      <section
+        className="relative h-[50vh] md:h-[70vh] flex items-center justify-center overflow-hidden"
+        style={{ backgroundColor: 'var(--bg-dark)' }}
+      >
+        <div className="absolute inset-0 opacity-40">
+          <Image
+            src="https://images.unsplash.com/photo-1609167830220-7164aa360951?w=1920&q=80"
+            alt="Products"
+            fill
+            className="object-cover"
+            priority
+          />
+        </div>
+        <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-transparent" />
+        <div className="relative z-10 text-center px-6">
+          <p
+            className="text-[10px] tracking-[0.3em] uppercase mb-4"
+            style={{ color: 'color-mix(in srgb, var(--text-light) 60%, transparent)' }}
+          >
+            {settings.siteName || 'DUC VIET'}
+          </p>
+          <h1
+            className="text-4xl md:text-5xl lg:text-6xl font-light tracking-wide"
+            style={{ fontFamily: 'var(--font-heading)', color: 'var(--text-light)' }}
+          >
+            Bộ Sưu Tập
+          </h1>
+          <p
+            className="mt-4 text-sm md:text-base max-w-xl mx-auto"
+            style={{ color: 'color-mix(in srgb, var(--text-light) 70%, transparent)' }}
+          >
+            Khám phá các sản phẩm trầm hương cao cấp, được chế tác thủ công tinh xảo
           </p>
         </div>
       </section>
 
-      <main className="max-w-7xl mx-auto px-4 py-8">
-        <div className="flex flex-col lg:flex-row gap-8">
-          {/* Sidebar Filters */}
-          <aside className="lg:w-64 flex-shrink-0">
-            <div className="bg-white rounded-lg border border-stone-200 p-5 sticky top-20">
-              <h3 className="font-semibold text-stone-800 mb-4">Danh Muc San Pham</h3>
-              <ul className="space-y-2">
-                <li>
-                  <Link
-                    href="/products"
-                    className="flex items-center justify-between py-2 px-3 rounded-lg bg-amber-50 text-amber-700 font-medium"
-                  >
-                    <span>Tat ca san pham</span>
-                    <span className="text-sm bg-amber-100 px-2 py-0.5 rounded">{products.length}</span>
-                  </Link>
-                </li>
-                {categories.map((cat) => {
-                  const count = products.filter(p => p.category?.id === cat.id).length;
-                  return (
-                    <li key={cat.id}>
-                      <Link
-                        href={`/category/${cat.slug}`}
-                        className="flex items-center justify-between py-2 px-3 rounded-lg text-stone-600 hover:bg-stone-50 hover:text-stone-800 transition"
-                      >
-                        <span>{cat.name}</span>
-                        <span className="text-sm text-stone-400">{count}</span>
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-
-              {/* Price Range */}
-              <div className="mt-6 pt-6 border-t border-stone-200">
-                <h3 className="font-semibold text-stone-800 mb-4">Khoang Gia</h3>
-                <ul className="space-y-2 text-sm">
-                  <li>
-                    <button className="w-full text-left py-2 px-3 rounded-lg text-stone-600 hover:bg-stone-50 transition">
-                      Duoi 5 trieu
-                    </button>
-                  </li>
-                  <li>
-                    <button className="w-full text-left py-2 px-3 rounded-lg text-stone-600 hover:bg-stone-50 transition">
-                      5 - 10 trieu
-                    </button>
-                  </li>
-                  <li>
-                    <button className="w-full text-left py-2 px-3 rounded-lg text-stone-600 hover:bg-stone-50 transition">
-                      10 - 20 trieu
-                    </button>
-                  </li>
-                  <li>
-                    <button className="w-full text-left py-2 px-3 rounded-lg text-stone-600 hover:bg-stone-50 transition">
-                      Tren 20 trieu
-                    </button>
-                  </li>
-                </ul>
-              </div>
-
-              {/* Contact Box */}
-              <div className="mt-6 pt-6 border-t border-stone-200">
-                <div className="bg-amber-50 rounded-lg p-4 text-center">
-                  <p className="text-sm text-stone-600 mb-2">Can tu van?</p>
-                  <a
-                    href="tel:0123456789"
-                    className="block w-full py-2 bg-amber-700 text-white font-medium rounded-lg hover:bg-amber-800 transition"
-                  >
-                    0123 456 789
-                  </a>
-                </div>
-              </div>
-            </div>
-          </aside>
-
-          {/* Products Grid */}
-          <div className="flex-1">
-            {/* Toolbar */}
-            <div className="flex items-center justify-between mb-6 bg-white rounded-lg border border-stone-200 p-4">
-              <p className="text-stone-600">
-                Hien thi <span className="font-semibold text-stone-800">{products.length}</span> san pham
-              </p>
-              <div className="flex items-center gap-4">
-                <select className="border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
-                  <option>Moi nhat</option>
-                  <option>Gia: Thap den cao</option>
-                  <option>Gia: Cao den thap</option>
-                  <option>Ten: A-Z</option>
-                </select>
-                <div className="hidden md:flex items-center gap-1 border border-stone-300 rounded-lg p-1">
-                  <button className="p-1.5 rounded bg-amber-100 text-amber-700">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-                    </svg>
-                  </button>
-                  <button className="p-1.5 rounded text-stone-400 hover:text-stone-600">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Products */}
-            {products.length === 0 ? (
-              <div className="text-center py-16 bg-white rounded-lg border border-stone-200">
-                <svg className="w-16 h-16 mx-auto text-stone-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                </svg>
-                <p className="text-stone-500">Chua co san pham nao</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
-                {products.map((product) => {
-                  const discount = calculateDiscount(product.price, product.originalPrice);
-                  return (
-                    <Link
-                      key={product.id}
-                      href={`/product/${product.slug}`}
-                      className="group bg-white rounded-lg overflow-hidden border border-stone-200 hover:shadow-lg hover:border-stone-300 transition-all duration-300"
-                    >
-                      {/* Image */}
-                      <div className="relative aspect-square bg-stone-100 overflow-hidden">
-                        {product.featuredImage ? (
-                          <Image
-                            src={product.featuredImage}
-                            alt={product.name}
-                            fill
-                            className="object-cover group-hover:scale-105 transition-transform duration-500"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <svg className="w-16 h-16 text-stone-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                          </div>
-                        )}
-                        {discount && (
-                          <span className="absolute top-2 left-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded">
-                            -{discount}%
-                          </span>
-                        )}
-                        {/* Quick view overlay */}
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all duration-300 flex items-center justify-center">
-                          <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-white text-stone-800 text-sm font-medium px-4 py-2 rounded-full shadow-lg">
-                            Xem chi tiet
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Info */}
-                      <div className="p-4">
-                        {product.category && (
-                          <span className="text-xs text-amber-700 uppercase tracking-wide">{product.category.name}</span>
-                        )}
-                        <h3 className="font-medium text-stone-800 group-hover:text-amber-700 transition mt-1 line-clamp-2 min-h-[2.5rem]">
-                          {product.name}
-                        </h3>
-                        <div className="mt-2 flex items-center gap-2">
-                          <span className="text-lg font-bold text-amber-700">{formatPrice(product.price)}</span>
-                          {product.originalPrice && product.originalPrice > (product.price || 0) && (
-                            <span className="text-sm text-stone-400 line-through">{formatPrice(product.originalPrice)}</span>
-                          )}
-                        </div>
-                        {/* Material badge */}
-                        {product.material && (
-                          <div className="mt-2">
-                            <span className="inline-block text-xs bg-stone-100 text-stone-600 px-2 py-1 rounded">
-                              {product.material}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Load More */}
-            {products.length >= 12 && (
-              <div className="mt-8 text-center">
-                <button className="px-8 py-3 border-2 border-amber-700 text-amber-700 font-semibold rounded-lg hover:bg-amber-700 hover:text-white transition">
-                  Xem them san pham
-                </button>
-              </div>
-            )}
+      {/* Category Filter */}
+      <nav
+        className="border-b sticky top-16 md:top-20 z-40"
+        style={{
+          backgroundColor: 'var(--bg-light)',
+          borderColor: 'color-mix(in srgb, var(--color-primary) 15%, transparent)'
+        }}
+      >
+        <div className="px-4 md:px-10 overflow-x-auto scrollbar-hide">
+          <div className="flex items-center gap-6 md:gap-8 h-12 min-w-max">
+            <button
+              onClick={() => { setSelectedCategory(null); setPage(0); }}
+              className={`text-[11px] tracking-[0.05em] uppercase whitespace-nowrap transition-colors py-3 border-b-2 -mb-[1px]`}
+              style={{
+                color: !selectedCategory ? 'var(--text-dark)' : 'color-mix(in srgb, var(--text-dark) 60%, transparent)',
+                borderColor: !selectedCategory ? 'var(--text-dark)' : 'transparent',
+                fontWeight: !selectedCategory ? 500 : 400,
+              }}
+            >
+              Tất cả
+            </button>
+            {categories.map((cat) => (
+              <button
+                key={cat.id}
+                onClick={() => { setSelectedCategory(cat.slug); setPage(0); }}
+                className={`text-[11px] tracking-[0.05em] uppercase whitespace-nowrap transition-colors py-3 border-b-2 -mb-[1px]`}
+                style={{
+                  color: selectedCategory === cat.slug ? 'var(--text-dark)' : 'color-mix(in srgb, var(--text-dark) 60%, transparent)',
+                  borderColor: selectedCategory === cat.slug ? 'var(--text-dark)' : 'transparent',
+                  fontWeight: selectedCategory === cat.slug ? 500 : 400,
+                }}
+              >
+                {cat.name}
+              </button>
+            ))}
           </div>
         </div>
-      </main>
+      </nav>
 
-      {/* Footer */}
-      <footer className="bg-stone-800 text-stone-300 mt-12">
-        <div className="max-w-7xl mx-auto px-4 py-12">
-          <div className="grid md:grid-cols-4 gap-8">
-            <div>
-              <h3 className="text-xl font-bold text-white mb-3">Tree</h3>
-              <p className="text-sm text-stone-400 leading-relaxed">
-                Chuyen cung cap tuong go dieu khac thu cong, mang dam ban sac van hoa Viet.
-              </p>
+      {/* Sort & Filter Bar */}
+      <div
+        className="border-b sticky top-[112px] md:top-[128px] z-30"
+        style={{
+          backgroundColor: 'var(--bg-light)',
+          borderColor: 'color-mix(in srgb, var(--color-primary) 15%, transparent)'
+        }}
+      >
+        <div className="px-4 md:px-10">
+          <div className="flex items-center justify-between h-12">
+            {/* Left: Sort */}
+            <div className="flex items-center gap-2 text-[12px]" style={{ color: 'var(--text-dark)' }}>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 7.5L7.5 3m0 0L12 7.5M7.5 3v13.5m13.5 0L16.5 21m0 0L12 16.5m4.5 4.5V7.5" />
+              </svg>
+              Sắp xếp:
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as SortOption)}
+                className="bg-transparent border-none cursor-pointer focus:outline-none font-medium"
+                style={{ color: 'var(--text-dark)' }}
+              >
+                <option value="newest">Mới nhất</option>
+                <option value="price_asc">Giá: Thấp - Cao</option>
+                <option value="price_desc">Giá: Cao - Thấp</option>
+                <option value="name_asc">A - Z</option>
+              </select>
             </div>
+
+            {/* Right: Filters */}
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="flex items-center gap-2 text-[12px] hover:opacity-60 transition-opacity"
+              style={{ color: 'var(--text-dark)' }}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" />
+              </svg>
+              Bộ lọc
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Filter Panel */}
+      <div
+        className={`border-b overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]
+          ${showFilters ? 'max-h-[400px] opacity-100' : 'max-h-0 opacity-0'}`}
+        style={{
+          backgroundColor: 'var(--bg-light)',
+          borderColor: 'color-mix(in srgb, var(--color-primary) 15%, transparent)'
+        }}
+      >
+        <div className="px-4 md:px-10 py-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             <div>
-              <h4 className="font-semibold text-white mb-3">San Pham</h4>
-              <ul className="space-y-2 text-sm">
-                {categories.slice(0, 4).map((cat) => (
+              <h4
+                className="text-[10px] tracking-[0.2em] uppercase mb-4"
+                style={{ color: 'color-mix(in srgb, var(--text-dark) 40%, transparent)' }}
+              >
+                Danh mục
+              </h4>
+              <ul className="space-y-2">
+                <li>
+                  <button
+                    onClick={() => { setSelectedCategory(null); setPage(0); setShowFilters(false); }}
+                    className="text-sm transition-colors"
+                    style={{
+                      color: !selectedCategory ? 'var(--text-dark)' : 'color-mix(in srgb, var(--text-dark) 50%, transparent)',
+                      fontWeight: !selectedCategory ? 500 : 400
+                    }}
+                  >
+                    Tất cả sản phẩm
+                  </button>
+                </li>
+                {categories.map(cat => (
                   <li key={cat.id}>
-                    <Link href={`/category/${cat.slug}`} className="text-stone-400 hover:text-white transition">
+                    <button
+                      onClick={() => { setSelectedCategory(cat.slug); setPage(0); setShowFilters(false); }}
+                      className="text-sm transition-colors"
+                      style={{
+                        color: selectedCategory === cat.slug ? 'var(--text-dark)' : 'color-mix(in srgb, var(--text-dark) 50%, transparent)',
+                        fontWeight: selectedCategory === cat.slug ? 500 : 400
+                      }}
+                    >
                       {cat.name}
-                    </Link>
+                    </button>
                   </li>
                 ))}
               </ul>
             </div>
             <div>
-              <h4 className="font-semibold text-white mb-3">Thong Tin</h4>
-              <ul className="space-y-2 text-sm text-stone-400">
-                <li><Link href="/about" className="hover:text-white transition">Gioi thieu</Link></li>
-                <li><Link href="/blog" className="hover:text-white transition">Tin tuc</Link></li>
-                <li><Link href="/contact" className="hover:text-white transition">Lien he</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold text-white mb-3">Lien He</h4>
-              <ul className="space-y-2 text-sm text-stone-400">
-                <li>123 Duong ABC, Quan 1, TP.HCM</li>
-                <li><a href="tel:0123456789" className="hover:text-white transition">0123 456 789</a></li>
-                <li><a href="mailto:info@tree.vn" className="hover:text-white transition">info@tree.vn</a></li>
+              <h4
+                className="text-[10px] tracking-[0.2em] uppercase mb-4"
+                style={{ color: 'color-mix(in srgb, var(--text-dark) 40%, transparent)' }}
+              >
+                Khoảng giá
+              </h4>
+              <ul className="space-y-2 text-sm" style={{ color: 'color-mix(in srgb, var(--text-dark) 50%, transparent)' }}>
+                <li><button className="hover:opacity-60 transition-opacity">Dưới 5 triệu</button></li>
+                <li><button className="hover:opacity-60 transition-opacity">5 - 10 triệu</button></li>
+                <li><button className="hover:opacity-60 transition-opacity">10 - 20 triệu</button></li>
+                <li><button className="hover:opacity-60 transition-opacity">Trên 20 triệu</button></li>
               </ul>
             </div>
           </div>
         </div>
-        <div className="border-t border-stone-700">
-          <div className="max-w-7xl mx-auto px-4 py-4 text-center text-xs text-stone-500">
-            © 2025 Tree. Dieu khac tuong go thu cong.
+      </div>
+
+      {/* Products Count */}
+      <div className="px-4 md:px-10 py-6">
+        <p
+          className="text-[11px] tracking-[0.1em]"
+          style={{ color: 'color-mix(in srgb, var(--text-dark) 50%, transparent)' }}
+        >
+          {totalElements} sản phẩm
+        </p>
+      </div>
+
+      {/* Products Grid */}
+      <main className="px-4 md:px-8 lg:px-12 pb-16" style={{ backgroundColor: 'var(--bg-light)' }}>
+        {products.length === 0 ? (
+          <div className="text-center py-24">
+            <p
+              className="text-sm mb-4"
+              style={{ color: 'color-mix(in srgb, var(--text-dark) 40%, transparent)' }}
+            >
+              Không có sản phẩm nào
+            </p>
+            <Link
+              href="/"
+              className="text-[12px] tracking-wider uppercase underline underline-offset-4 hover:opacity-60 transition-opacity"
+              style={{ color: 'var(--text-dark)' }}
+            >
+              Quay về trang chủ
+            </Link>
           </div>
-        </div>
-      </footer>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-8 md:gap-x-6 md:gap-y-10">
+              {products.map((product) => (
+                <ProductCard key={product.id} product={product} siteName={settings.siteName} />
+              ))}
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="mt-12 flex flex-col items-center gap-4">
+                <div className="flex items-center gap-8">
+                  <button
+                    onClick={() => setPage(p => Math.max(0, p - 1))}
+                    disabled={page === 0}
+                    className={`text-[11px] tracking-[0.15em] uppercase transition-opacity ${
+                      page === 0 ? 'opacity-20 cursor-not-allowed' : 'hover:opacity-50'
+                    }`}
+                    style={{ color: 'var(--text-dark)' }}
+                  >
+                    ← Trước
+                  </button>
+                  <span
+                    className="text-[11px]"
+                    style={{ color: 'color-mix(in srgb, var(--text-dark) 40%, transparent)' }}
+                  >
+                    {page + 1} / {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+                    disabled={page >= totalPages - 1}
+                    className={`text-[11px] tracking-[0.15em] uppercase transition-opacity ${
+                      page >= totalPages - 1 ? 'opacity-20 cursor-not-allowed' : 'hover:opacity-50'
+                    }`}
+                    style={{ color: 'var(--text-dark)' }}
+                  >
+                    Sau →
+                  </button>
+                </div>
+                <p
+                  className="text-[10px]"
+                  style={{ color: 'color-mix(in srgb, var(--text-dark) 30%, transparent)' }}
+                >
+                  {products.length} / {totalElements} sản phẩm
+                </p>
+              </div>
+            )}
+          </>
+        )}
+      </main>
+
+      {/* Footer */}
+      <FooterSection />
+
+      {/* CSS */}
+      <style jsx global>{`
+        .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+        }
+      `}</style>
     </div>
   );
 }

@@ -1,10 +1,22 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useSiteSettings } from '@/contexts/SiteSettingsContext';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+
+// Helper to get full image URL
+function getImageUrl(path: string | undefined): string {
+  if (!path) return '';
+  if (path.startsWith('http')) return path;
+  if (path.startsWith('/uploads')) return `${API_URL}${path}`;
+  return path;
+}
 
 export default function FooterSection() {
   const { settings } = useSiteSettings();
+  const footerLogo = getImageUrl(settings.logoDarkUrl) || getImageUrl(settings.logoUrl);
   return (
     <footer style={{ backgroundColor: 'var(--bg-dark)', color: 'var(--text-light)' }}>
       {/* Newsletter Section - Giống Gucci */}
@@ -142,20 +154,31 @@ export default function FooterSection() {
       </div>
 
       {/* GIANT LOGO - Giống Gucci - Responsive based on text length */}
-      <div className="overflow-hidden">
-        <h2
-          className="text-center font-light uppercase whitespace-nowrap"
-          style={{
-            fontFamily: 'var(--font-heading)',
-            fontSize: `clamp(${Math.max(60, 120 - ((settings.siteName || 'Duc Viet').length - 2) * 8)}px, ${Math.max(10, 25 - ((settings.siteName || 'Duc Viet').length - 2) * 1.5)}vw, ${Math.max(150, 400 - ((settings.siteName || 'Duc Viet').length - 2) * 25)}px)`,
-            letterSpacing: '0.1em',
-            lineHeight: 0.85,
-            color: 'var(--text-light)',
-            paddingBottom: '0.1em',
-          }}
-        >
-          {settings.siteName || 'Duc Viet'}
-        </h2>
+      <div className="overflow-hidden flex justify-center pb-8">
+        {footerLogo ? (
+          <Image
+            src={footerLogo}
+            alt={settings.siteName || 'Logo'}
+            width={400}
+            height={150}
+            unoptimized
+            className="h-24 md:h-32 lg:h-40 w-auto object-contain opacity-80"
+          />
+        ) : (
+          <h2
+            className="text-center font-light uppercase whitespace-nowrap"
+            style={{
+              fontFamily: 'var(--font-heading)',
+              fontSize: `clamp(${Math.max(60, 120 - ((settings.siteName || 'Duc Viet').length - 2) * 8)}px, ${Math.max(10, 25 - ((settings.siteName || 'Duc Viet').length - 2) * 1.5)}vw, ${Math.max(150, 400 - ((settings.siteName || 'Duc Viet').length - 2) * 25)}px)`,
+              letterSpacing: '0.1em',
+              lineHeight: 0.85,
+              color: 'var(--text-light)',
+              paddingBottom: '0.1em',
+            }}
+          >
+            {settings.siteName || 'Duc Viet'}
+          </h2>
+        )}
       </div>
     </footer>
   );
