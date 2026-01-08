@@ -72,11 +72,12 @@ export default function LuxuryNavbar({ categories }: LuxuryNavbarProps) {
   return (
     <>
       <header
-        className="fixed top-0 left-0 right-0 z-50 transition-shadow duration-700"
+        className="fixed top-0 left-0 right-0 z-50 transition-all duration-700"
         style={{
           backgroundColor: `rgba(255, 255, 255, ${headerBgOpacity})`,
           backdropFilter: isScrolled ? 'blur(20px)' : 'none',
           boxShadow: isScrolled ? '0 1px 30px rgba(0,0,0,0.06)' : 'none',
+          borderBottom: isScrolled ? '1px solid rgba(0,0,0,0.1)' : '1px solid transparent',
         }}
       >
         <div className="max-w-7xl mx-auto px-6 lg:px-8">

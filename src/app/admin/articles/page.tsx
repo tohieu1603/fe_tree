@@ -10,6 +10,16 @@ import type { Article, PageResponse, Category } from '@/types';
 
 const { Title, Text } = Typography;
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+
+// Helper to get full image URL
+function getImageUrl(path: string | undefined): string {
+  if (!path) return '';
+  if (path.startsWith('http')) return path;
+  if (path.startsWith('/uploads')) return `${API_URL}${path}`;
+  return path;
+}
+
 export default function ArticlesPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('articles');
@@ -91,7 +101,7 @@ export default function ArticlesPage() {
       render: (_: unknown, record: Article) => (
         <div className="flex items-center gap-3">
           {record.featuredImage ? (
-            <Avatar shape="square" size={48} src={record.featuredImage} />
+            <Avatar shape="square" size={48} src={getImageUrl(record.featuredImage)} />
           ) : (
             <Avatar shape="square" size={48} className="bg-gray-200 text-gray-500">
               {record.title.charAt(0).toUpperCase()}
@@ -196,7 +206,7 @@ export default function ArticlesPage() {
       render: (_: unknown, record: Article) => (
         <div className="flex items-center gap-3">
           {record.featuredImage ? (
-            <Avatar shape="square" size={48} src={record.featuredImage} />
+            <Avatar shape="square" size={48} src={getImageUrl(record.featuredImage)} />
           ) : (
             <Avatar shape="square" size={48} className="bg-gray-200 text-gray-500">
               {record.title.charAt(0).toUpperCase()}

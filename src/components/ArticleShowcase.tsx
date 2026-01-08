@@ -4,6 +4,16 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Article } from '@/types';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+
+// Helper to get full image URL
+function getImageUrl(path: string | undefined): string {
+  if (!path) return '';
+  if (path.startsWith('http')) return path;
+  if (path.startsWith('/uploads')) return `${API_URL}${path}`;
+  return path;
+}
+
 interface ArticleShowcaseProps {
   articles: Article[];
 }
@@ -42,8 +52,9 @@ export default function ArticleShowcase({ articles }: ArticleShowcaseProps) {
             <div className="relative aspect-[4/3] overflow-hidden bg-stone-100 mb-6">
               {featuredArticle.featuredImage ? (
                 <Image
-                  src={featuredArticle.featuredImage}
+                  src={getImageUrl(featuredArticle.featuredImage)}
                   alt={featuredArticle.title}
+                  unoptimized
                   fill
                   className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
                 />
@@ -82,9 +93,10 @@ export default function ArticleShowcase({ articles }: ArticleShowcaseProps) {
                 <div className="relative w-32 md:w-40 aspect-square overflow-hidden bg-stone-100 flex-shrink-0">
                   {article.featuredImage ? (
                     <Image
-                      src={article.featuredImage}
+                      src={getImageUrl(article.featuredImage)}
                       alt={article.title}
                       fill
+                      unoptimized
                       className="object-cover transition-transform duration-500 group-hover:scale-105"
                     />
                   ) : (

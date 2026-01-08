@@ -39,7 +39,32 @@ export default function FooterSection() {
       {/* Links Section */}
       <div className="border-t" style={{ borderColor: 'color-mix(in srgb, var(--text-light) 10%, transparent)' }}>
         <div className="max-w-[1400px] mx-auto px-6 md:px-12 py-12 md:py-16">
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-8 md:gap-16">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-16">
+            {/* Logo - Top Left */}
+            <div className="col-span-2 md:col-span-1 mb-4 md:mb-0">
+              {footerLogo ? (
+                <Image
+                  src={footerLogo}
+                  alt={settings.siteName || 'Logo'}
+                  width={160}
+                  height={60}
+                  unoptimized
+                  className="h-12 md:h-16 w-auto object-contain opacity-80"
+                />
+              ) : (
+                <h2
+                  className="font-light uppercase"
+                  style={{
+                    fontFamily: 'var(--font-heading)',
+                    fontSize: '2rem',
+                    letterSpacing: '0.1em',
+                    color: 'var(--text-light)',
+                  }}
+                >
+                  {settings.siteName || 'Duc Viet'}
+                </h2>
+              )}
+            </div>
             {/* Column 1 - Help */}
             <div>
               <h4 className="text-[11px] tracking-[0.15em] uppercase mb-6" style={{ color: 'color-mix(in srgb, var(--text-light) 40%, transparent)' }}>
@@ -153,33 +178,6 @@ export default function FooterSection() {
         </p>
       </div>
 
-      {/* GIANT LOGO - Giống Gucci - Responsive based on text length */}
-      <div className="overflow-hidden flex justify-center pb-8">
-        {footerLogo ? (
-          <Image
-            src={footerLogo}
-            alt={settings.siteName || 'Logo'}
-            width={400}
-            height={150}
-            unoptimized
-            className="h-24 md:h-32 lg:h-40 w-auto object-contain opacity-80"
-          />
-        ) : (
-          <h2
-            className="text-center font-light uppercase whitespace-nowrap"
-            style={{
-              fontFamily: 'var(--font-heading)',
-              fontSize: `clamp(${Math.max(60, 120 - ((settings.siteName || 'Duc Viet').length - 2) * 8)}px, ${Math.max(10, 25 - ((settings.siteName || 'Duc Viet').length - 2) * 1.5)}vw, ${Math.max(150, 400 - ((settings.siteName || 'Duc Viet').length - 2) * 25)}px)`,
-              letterSpacing: '0.1em',
-              lineHeight: 0.85,
-              color: 'var(--text-light)',
-              paddingBottom: '0.1em',
-            }}
-          >
-            {settings.siteName || 'Duc Viet'}
-          </h2>
-        )}
-      </div>
     </footer>
   );
 }
