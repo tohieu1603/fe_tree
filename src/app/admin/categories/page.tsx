@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Table, Button, Space, Tag, Popconfirm, message, Modal, Form, Input, InputNumber, Switch, Card, Typography, Tooltip, Row, Col, Statistic } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, FolderOutlined, CheckCircleOutlined, CloseCircleOutlined, PictureOutlined } from '@ant-design/icons';
-import { getAdminCategories, createCategory, updateCategory, deleteCategory } from '@/lib/categories';
+import { Table, Button, Space, Tag, Popconfirm, message, Modal, Form, Input, InputNumber, Switch, Card, Typography, Tooltip, Row, Col, Statistic, Tabs } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined, FolderOutlined, CheckCircleOutlined, CloseCircleOutlined, UndoOutlined, RestOutlined } from '@ant-design/icons';
+import { getAdminCategories, createCategory, updateCategory, deleteCategory, getTrashCategories, restoreCategory, permanentDeleteCategory } from '@/lib/categories';
 import ImageUpload, { getImageUrl } from '@/components/admin/ImageUpload';
 import Image from 'next/image';
 import type { Category, CategoryRequest } from '@/types';
@@ -11,8 +11,10 @@ import type { Category, CategoryRequest } from '@/types';
 const { Title, Text } = Typography;
 
 export default function CategoriesPage() {
+  const [activeTab, setActiveTab] = useState('categories');
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [trashCategories, setTrashCategories] = useState<Category[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -24,23 +26,61 @@ export default function CategoriesPage() {
       const result = await getAdminCategories();
       setCategories(result);
     } catch {
-      message.error('Failed to load categories');
+      message.error('Không thể tải danh mục');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadTrash = async () => {
+    setLoading(true);
+    try {
+      const result = await getTrashCategories();
+      setTrashCategories(result);
+    } catch {
+      message.error('Không thể tải thùng rác');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadCategories();
-  }, []);
+    if (activeTab === 'categories') {
+      loadCategories();
+    } else {
+      loadTrash();
+    }
+  }, [activeTab]);
 
   const handleDelete = async (id: string) => {
     try {
       await deleteCategory(id);
-      message.success('Category deleted');
+      message.success('Đã chuyển vào thùng rác');
       loadCategories();
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      const errorMessage = axiosError?.response?.data?.message || 'Không thể xoá danh mục';
+      message.error(errorMessage);
+    }
+  };
+
+  const handleRestore = async (id: string) => {
+    try {
+      await restoreCategory(id);
+      message.success('Đã khôi phục danh mục');
+      loadTrash();
     } catch {
-      message.error('Failed to delete category');
+      message.error('Không thể khôi phục');
+    }
+  };
+
+  const handlePermanentDelete = async (id: string) => {
+    try {
+      await permanentDeleteCategory(id);
+      message.success('Đã xoá vĩnh viễn');
+      loadTrash();
+    } catch {
+      message.error('Không thể xoá');
     }
   };
 
@@ -68,7 +108,6 @@ export default function CategoriesPage() {
   const handleSubmit = async (values: CategoryRequest) => {
     setSubmitting(true);
     try {
-      // Normalize imageUrl - extract URL string if it's an object
       const normalizedValues = {
         ...values,
         imageUrl: typeof values.imageUrl === 'object' && values.imageUrl !== null
@@ -78,16 +117,16 @@ export default function CategoriesPage() {
 
       if (editingId) {
         await updateCategory(editingId, normalizedValues);
-        message.success('Category updated');
+        message.success('Đã cập nhật danh mục');
       } else {
         await createCategory(normalizedValues);
-        message.success('Category created');
+        message.success('Đã tạo danh mục');
       }
       setModalOpen(false);
       loadCategories();
     } catch (error) {
       console.error('Category save error:', error);
-      message.error('Operation failed');
+      message.error('Thao tác thất bại');
     } finally {
       setSubmitting(false);
     }
@@ -110,7 +149,7 @@ export default function CategoriesPage() {
 
   const columns = [
     {
-      title: 'Category',
+      title: 'Danh mục',
       key: 'category',
       render: (_: unknown, record: Category) => (
         <div className="flex items-center gap-3">
@@ -138,7 +177,7 @@ export default function CategoriesPage() {
       ),
     },
     {
-      title: 'Description',
+      title: 'Mô tả',
       dataIndex: 'description',
       key: 'description',
       width: 200,
@@ -146,47 +185,127 @@ export default function CategoriesPage() {
       render: (desc: string) => desc ? <Text type="secondary">{desc}</Text> : <Text type="secondary">-</Text>,
     },
     {
-      title: 'Articles',
+      title: 'Bài viết',
       dataIndex: 'articleCount',
       key: 'articleCount',
       width: 100,
-      render: (count: number) => <Tag color="blue">{count || 0} articles</Tag>,
+      render: (count: number) => <Tag color="blue">{count || 0} bài</Tag>,
     },
     {
-      title: 'Order',
+      title: 'Thứ tự',
       dataIndex: 'sortOrder',
       key: 'sortOrder',
       width: 80,
       render: (order: number) => <Text type="secondary">{order}</Text>,
     },
     {
-      title: 'Status',
+      title: 'Trạng thái',
       dataIndex: 'active',
       key: 'active',
       width: 100,
       render: (active: boolean) => (
         <Tag color={active ? 'success' : 'default'} icon={active ? <CheckCircleOutlined /> : <CloseCircleOutlined />}>
-          {active ? 'Active' : 'Inactive'}
+          {active ? 'Hoạt động' : 'Ẩn'}
         </Tag>
       ),
     },
     {
-      title: 'Actions',
+      title: 'Thao tác',
       key: 'actions',
       width: 100,
       render: (_: unknown, record: Category) => (
         <Space>
-          <Tooltip title="Edit">
+          <Tooltip title="Sửa">
             <Button type="text" icon={<EditOutlined />} onClick={() => openModal(record)} />
           </Tooltip>
           <Popconfirm
-            title="Delete this category?"
-            description="Articles in this category will become uncategorized."
+            title="Xoá danh mục?"
+            description={record.articleCount ? `Danh mục có ${record.articleCount} bài viết. Hãy di chuyển bài viết trước.` : 'Danh mục sẽ được chuyển vào thùng rác.'}
             onConfirm={() => handleDelete(record.id)}
-            okText="Delete"
+            okText="Xoá"
+            cancelText="Huỷ"
             okButtonProps={{ danger: true }}
           >
-            <Tooltip title="Delete">
+            <Tooltip title="Xoá">
+              <Button type="text" icon={<DeleteOutlined />} danger />
+            </Tooltip>
+          </Popconfirm>
+        </Space>
+      ),
+    },
+  ];
+
+  const trashColumns = [
+    {
+      title: 'Danh mục',
+      key: 'category',
+      render: (_: unknown, record: Category) => (
+        <div className="flex items-center gap-3">
+          {record.imageUrl ? (
+            <div className="w-10 h-10 rounded-lg overflow-hidden relative">
+              <Image
+                src={getImageUrl(record.imageUrl)}
+                alt={record.name}
+                fill
+                className="object-cover"
+              />
+            </div>
+          ) : (
+            <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+              <FolderOutlined className="text-blue-500 text-lg" />
+            </div>
+          )}
+          <div>
+            <Text strong>{record.name}</Text>
+            <div>
+              <Text type="secondary" className="text-xs">/{record.slug}</Text>
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      title: 'Mô tả',
+      dataIndex: 'description',
+      key: 'description',
+      width: 200,
+      ellipsis: true,
+      render: (desc: string) => desc ? <Text type="secondary">{desc}</Text> : <Text type="secondary">-</Text>,
+    },
+    {
+      title: 'Đã xoá',
+      dataIndex: 'deletedAt',
+      key: 'deletedAt',
+      width: 130,
+      render: (date: string) => date ? (
+        <Tooltip title={new Date(date).toLocaleString()}>
+          <Text type="secondary">{new Date(date).toLocaleDateString('vi-VN')}</Text>
+        </Tooltip>
+      ) : '-',
+    },
+    {
+      title: 'Thao tác',
+      key: 'actions',
+      width: 120,
+      render: (_: unknown, record: Category) => (
+        <Space>
+          <Tooltip title="Khôi phục">
+            <Button
+              type="text"
+              icon={<UndoOutlined />}
+              onClick={() => handleRestore(record.id)}
+              className="text-green-600"
+            />
+          </Tooltip>
+          <Popconfirm
+            title="Xoá vĩnh viễn?"
+            description="Danh mục sẽ bị xoá hoàn toàn và không thể khôi phục."
+            onConfirm={() => handlePermanentDelete(record.id)}
+            okText="Xoá vĩnh viễn"
+            cancelText="Huỷ"
+            okButtonProps={{ danger: true }}
+          >
+            <Tooltip title="Xoá vĩnh viễn">
               <Button type="text" icon={<DeleteOutlined />} danger />
             </Tooltip>
           </Popconfirm>
@@ -198,9 +317,9 @@ export default function CategoriesPage() {
   return (
     <div className="max-w-[1200px] mx-auto">
       <div className="flex justify-between items-center mb-6">
-        <Title level={3} className="!mb-0">Categories</Title>
+        <Title level={3} className="!mb-0">Danh mục</Title>
         <Button type="primary" icon={<PlusOutlined />} size="large" onClick={() => openModal()}>
-          New Category
+          Tạo danh mục
         </Button>
       </div>
 
@@ -208,7 +327,7 @@ export default function CategoriesPage() {
         <Col xs={24} sm={8}>
           <Card className="shadow-sm">
             <Statistic
-              title={<Text type="secondary">Total Categories</Text>}
+              title={<Text type="secondary">Tổng danh mục</Text>}
               value={categories.length}
               prefix={<FolderOutlined className="text-blue-500" />}
             />
@@ -217,7 +336,7 @@ export default function CategoriesPage() {
         <Col xs={24} sm={8}>
           <Card className="shadow-sm">
             <Statistic
-              title={<Text type="secondary">Active Categories</Text>}
+              title={<Text type="secondary">Đang hoạt động</Text>}
               value={activeCategories}
               prefix={<CheckCircleOutlined className="text-green-500" />}
               valueStyle={{ color: '#52c41a' }}
@@ -227,7 +346,7 @@ export default function CategoriesPage() {
         <Col xs={24} sm={8}>
           <Card className="shadow-sm">
             <Statistic
-              title={<Text type="secondary">Total Articles</Text>}
+              title={<Text type="secondary">Tổng bài viết</Text>}
               value={totalArticles}
               prefix={<FolderOutlined className="text-purple-500" />}
             />
@@ -235,21 +354,57 @@ export default function CategoriesPage() {
         </Col>
       </Row>
 
-      <Card className="shadow-sm">
-        <Table
-          columns={columns}
-          dataSource={categories}
-          rowKey="id"
-          loading={loading}
-          pagination={false}
-        />
-      </Card>
+      <Tabs
+        activeKey={activeTab}
+        onChange={setActiveTab}
+        items={[
+          {
+            key: 'categories',
+            label: (
+              <span>
+                <FolderOutlined /> Danh mục ({categories.length})
+              </span>
+            ),
+            children: (
+              <Card className="shadow-sm">
+                <Table
+                  columns={columns}
+                  dataSource={categories}
+                  rowKey="id"
+                  loading={loading}
+                  pagination={false}
+                />
+              </Card>
+            ),
+          },
+          {
+            key: 'trash',
+            label: (
+              <span>
+                <RestOutlined /> Thùng rác ({trashCategories.length})
+              </span>
+            ),
+            children: (
+              <Card className="shadow-sm">
+                <Table
+                  columns={trashColumns}
+                  dataSource={trashCategories}
+                  rowKey="id"
+                  loading={loading}
+                  pagination={false}
+                  locale={{ emptyText: 'Thùng rác trống' }}
+                />
+              </Card>
+            ),
+          },
+        ]}
+      />
 
       <Modal
         title={
           <div className="flex items-center gap-2">
             <FolderOutlined />
-            {editingId ? 'Edit Category' : 'New Category'}
+            {editingId ? 'Sửa danh mục' : 'Tạo danh mục mới'}
           </div>
         }
         open={modalOpen}
@@ -260,11 +415,11 @@ export default function CategoriesPage() {
         <Form form={form} layout="vertical" onFinish={handleSubmit} className="mt-4">
           <Form.Item
             name="name"
-            label="Name"
-            rules={[{ required: true, message: 'Category name is required' }]}
+            label="Tên danh mục"
+            rules={[{ required: true, message: 'Tên danh mục là bắt buộc' }]}
           >
             <Input
-              placeholder="Category name"
+              placeholder="Tên danh mục"
               size="large"
               onChange={(e) => !editingId && generateSlug(e.target.value)}
             />
@@ -273,15 +428,15 @@ export default function CategoriesPage() {
           <Form.Item
             name="slug"
             label="Slug"
-            extra="URL-friendly identifier. Auto-generated from name."
+            extra="Định danh URL. Tự động tạo từ tên."
           >
-            <Input placeholder="category-slug" addonBefore="/category/" />
+            <Input placeholder="danh-muc-slug" addonBefore="/category/" />
           </Form.Item>
 
-          <Form.Item name="description" label="Description">
+          <Form.Item name="description" label="Mô tả">
             <Input.TextArea
               rows={3}
-              placeholder="Brief description of this category"
+              placeholder="Mô tả ngắn về danh mục"
               showCount
               maxLength={200}
             />
@@ -309,15 +464,15 @@ export default function CategoriesPage() {
 
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item name="sortOrder" label="Sort Order" initialValue={0}>
+              <Form.Item name="sortOrder" label="Thứ tự" initialValue={0}>
                 <InputNumber min={0} className="w-full" size="large" />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="active" label="Status" valuePropName="checked" initialValue={true}>
+              <Form.Item name="active" label="Trạng thái" valuePropName="checked" initialValue={true}>
                 <Switch
-                  checkedChildren="Active"
-                  unCheckedChildren="Inactive"
+                  checkedChildren="Hoạt động"
+                  unCheckedChildren="Ẩn"
                   className="mt-2"
                 />
               </Form.Item>
@@ -326,9 +481,9 @@ export default function CategoriesPage() {
 
           <Form.Item className="mb-0 mt-4">
             <Space className="w-full justify-end">
-              <Button onClick={() => setModalOpen(false)}>Cancel</Button>
+              <Button onClick={() => setModalOpen(false)}>Huỷ</Button>
               <Button type="primary" htmlType="submit" loading={submitting}>
-                {editingId ? 'Update Category' : 'Create Category'}
+                {editingId ? 'Cập nhật' : 'Tạo danh mục'}
               </Button>
             </Space>
           </Form.Item>

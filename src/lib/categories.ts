@@ -26,6 +26,21 @@ export const deleteCategory = async (id: string) => {
   await api.delete(`/api/admin/categories/${id}`);
 };
 
+// Trash endpoints
+export const getTrashCategories = async () => {
+  const response = await api.get<ApiResponse<Category[]>>('/api/admin/categories/trash');
+  return response.data.data;
+};
+
+export const restoreCategory = async (id: string) => {
+  const response = await api.post<ApiResponse<Category>>(`/api/admin/categories/${id}/restore`);
+  return response.data.data;
+};
+
+export const permanentDeleteCategory = async (id: string) => {
+  await api.delete(`/api/admin/categories/${id}/permanent`);
+};
+
 // Public endpoints
 export const getPublicCategories = async () => {
   const response = await api.get<ApiResponse<Category[]>>('/api/public/categories');

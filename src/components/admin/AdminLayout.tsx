@@ -19,6 +19,7 @@ import {
   BellOutlined,
   SearchOutlined,
   PictureOutlined,
+  ShoppingOutlined,
 } from '@ant-design/icons';
 import { logout, getUser, isAuthenticated } from '@/lib/auth';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -29,6 +30,7 @@ const { Text, Title } = Typography;
 
 const menuItems = [
   { key: '/admin', icon: <DashboardOutlined />, label: 'Dashboard' },
+  { key: '/admin/products', icon: <ShoppingOutlined />, label: 'San pham' },
   { key: '/admin/articles', icon: <FileTextOutlined />, label: 'Bai viet' },
   { key: '/admin/categories', icon: <FolderOutlined />, label: 'Danh muc' },
   { key: '/admin/banners', icon: <PictureOutlined />, label: 'Banner' },
@@ -41,7 +43,9 @@ const getBreadcrumbItems = (pathname: string): { title: React.ReactNode; href?: 
     { title: <HomeOutlined />, href: '/admin' }
   ];
 
-  if (pathname.includes('/articles')) {
+  if (pathname.includes('/products')) {
+    items.push({ title: 'San pham', href: '/admin/products' });
+  } else if (pathname.includes('/articles')) {
     items.push({ title: 'Bai viet', href: '/admin/articles' });
     if (pathname.includes('/new')) {
       items.push({ title: 'Tao moi' });
@@ -136,15 +140,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         }}
       >
         {/* Logo */}
-        <div className={`h-16 flex items-center justify-center border-b ${isDark ? 'border-gray-700' : 'border-gray-100'}`}>
+        <div className={`h-20 flex items-center justify-center border-b ${isDark ? 'border-gray-700' : 'border-gray-100'}`}>
           {collapsed ? (
-            <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center">
-              <span className="text-white font-bold text-lg">T</span>
+            <div className="w-[60px] h-[60px] bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+              <span className="text-white font-bold text-2xl">T</span>
             </div>
           ) : (
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30">
-                <GlobalOutlined className="text-white text-lg" />
+              <div className="w-[60px] h-[60px] bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30">
+                <GlobalOutlined className="text-white text-2xl" />
               </div>
               <div>
                 <Title level={5} className={`!mb-0 ${isDark ? '!text-white' : '!text-gray-800'}`}>Tree Admin</Title>
@@ -159,6 +163,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           theme={isDark ? 'dark' : 'light'}
           mode="inline"
           selectedKeys={[
+            pathname.startsWith('/admin/products') ? '/admin/products' :
             pathname.startsWith('/admin/articles') ? '/admin/articles' :
             pathname.startsWith('/admin/categories') ? '/admin/categories' :
             pathname.startsWith('/admin/banners') ? '/admin/banners' :

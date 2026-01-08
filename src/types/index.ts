@@ -44,6 +44,8 @@ export interface Category {
   level: number;
   children?: Category[];
   createdAt: string;
+  deleted?: boolean;
+  deletedAt?: string;
 }
 
 export interface Article {
@@ -79,6 +81,8 @@ export interface Article {
   };
   createdAt: string;
   updatedAt: string;
+  deleted?: boolean;
+  deletedAt?: string;
 }
 
 export interface ArticleRequest {
@@ -144,4 +148,29 @@ export interface Product {
   category?: Category;
   createdAt: string;
   updatedAt: string;
+  deleted?: boolean;
+  deletedAt?: string;
+}
+
+export interface ProductRequest {
+  name: string;
+  slug?: string;
+  summary?: string;
+  description?: string;
+  featuredImage?: string;
+  images?: string[];
+  price?: number;
+  originalPrice?: number;
+  sku?: string;
+  dimensions?: string;
+  material?: string;
+  color?: string;
+  weight?: number;
+  stockQuantity?: number;
+  isFeatured?: boolean;
+  isActive?: boolean;
+  metaTitle?: string;
+  metaDescription?: string;
+  metaKeywords?: string;
+  categoryId?: string;
 }

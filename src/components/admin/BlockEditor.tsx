@@ -3,13 +3,30 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import {
   Button, Input, Select, Space, Typography, Tooltip, Popconfirm, Card, Empty, Modal,
-  InputNumber, Switch, Image, Tabs, Collapse
+  InputNumber, Image, Tabs, Collapse
 } from 'antd';
 import {
   PlusOutlined, DeleteOutlined, ArrowUpOutlined, ArrowDownOutlined,
-  CopyOutlined, MenuOutlined, FileTextOutlined, PictureOutlined,
+  CopyOutlined, HolderOutlined, FileTextOutlined, PictureOutlined,
   LinkOutlined, UploadOutlined
 } from '@ant-design/icons';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import api from '@/lib/api';
 
 const { Text } = Typography;
@@ -479,8 +496,8 @@ function ImageBlockEditor({
   );
 }
 
-// Single Block Component
-function BlockItem({
+// Sortable Block Item Wrapper
+function SortableBlockItem({
   block,
   index,
   total,
@@ -499,6 +516,22 @@ function BlockItem({
   onMoveDown: () => void;
   onAddBelow: () => void;
 }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: block.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 1000 : 'auto',
+  };
+
   const isHeading = ['H2', 'H3', 'H4'].includes(block.type);
   const isImage = block.type === 'IMAGE';
 
@@ -528,10 +561,20 @@ function BlockItem({
   };
 
   return (
-    <div className="group border rounded-lg p-3 mb-3 bg-white hover:border-blue-300 transition-colors">
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`group border rounded-lg p-3 mb-3 bg-white hover:border-blue-300 transition-colors ${isDragging ? 'shadow-lg border-blue-400' : ''}`}
+    >
       {/* Block Header */}
       <div className="flex items-center gap-2 mb-2">
-        <MenuOutlined className="text-gray-400 cursor-move" />
+        <div
+          {...attributes}
+          {...listeners}
+          className="cursor-grab active:cursor-grabbing p-1 hover:bg-gray-100 rounded"
+        >
+          <HolderOutlined className="text-gray-400" />
+        </div>
         <div className="flex items-center gap-1">
           <Text type="secondary" className="text-xs font-mono bg-gray-100 px-2 py-0.5 rounded">
             {block.type}
@@ -667,6 +710,18 @@ export default function BlockEditor({ value = [], onChange }: BlockEditorProps) 
   const [uploadingPastedImage, setUploadingPastedImage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
   useEffect(() => {
     if (JSON.stringify(value) !== JSON.stringify(blocks)) {
       setBlocks(value);
@@ -677,6 +732,15 @@ export default function BlockEditor({ value = [], onChange }: BlockEditorProps) 
     setBlocks(newBlocks);
     onChange?.(newBlocks);
   }, [onChange]);
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      const oldIndex = blocks.findIndex((b) => b.id === active.id);
+      const newIndex = blocks.findIndex((b) => b.id === over.id);
+      updateBlocks(arrayMove(blocks, oldIndex, newIndex));
+    }
+  }, [blocks, updateBlocks]);
 
   const addBlock = useCallback((type: BlockType = 'PARAGRAPH', afterIndex?: number) => {
     const newBlock: ContentBlock = {
@@ -890,7 +954,7 @@ export default function BlockEditor({ value = [], onChange }: BlockEditorProps) 
       <Card
         title={
           <span className="flex items-center gap-2">
-            <MenuOutlined /> Mục lục (tự động từ Heading)
+            <HolderOutlined /> Mục lục (tự động từ Heading)
           </span>
         }
         className="mb-4"
@@ -921,19 +985,27 @@ export default function BlockEditor({ value = [], onChange }: BlockEditorProps) 
           </Space>
         </Empty>
       ) : (
-        blocks.map((block, index) => (
-          <BlockItem
-            key={block.id}
-            block={block}
-            index={index}
-            total={blocks.length}
-            onChange={(b) => updateBlock(index, b)}
-            onDelete={() => deleteBlock(index)}
-            onMoveUp={() => moveBlock(index, index - 1)}
-            onMoveDown={() => moveBlock(index, index + 1)}
-            onAddBelow={() => addBlock('PARAGRAPH', index)}
-          />
-        ))
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext items={blocks.map(b => b.id)} strategy={verticalListSortingStrategy}>
+            {blocks.map((block, index) => (
+              <SortableBlockItem
+                key={block.id}
+                block={block}
+                index={index}
+                total={blocks.length}
+                onChange={(b: ContentBlock) => updateBlock(index, b)}
+                onDelete={() => deleteBlock(index)}
+                onMoveUp={() => moveBlock(index, index - 1)}
+                onMoveDown={() => moveBlock(index, index + 1)}
+                onAddBelow={() => addBlock('PARAGRAPH', index)}
+              />
+            ))}
+          </SortableContext>
+        </DndContext>
       )}
 
       {/* Hidden file input */}

@@ -102,8 +102,10 @@ export default function HeroSection() {
   }, []);
 
   // Get current slide content (fallback to banner defaults)
+  // Priority: slide.title > banner.title (siteName only when no banner data at all)
   const currentSlide = slides[currentIndex] || slides[0];
-  const displayTitle = currentSlide?.title || banner?.title || settings.siteName || 'DUC VIET';
+  const hasBannerData = banner !== null;
+  const displayTitle = currentSlide?.title || banner?.title || (hasBannerData ? '' : (settings.siteName || 'DUC VIET'));
   const displaySubtitle = currentSlide?.subtitle || banner?.subtitle || settings.heroSubtitle || 'Tinh Hoa Thiên Nhiên • Nghệ Thuật Thủ Công';
 
   // Auto-advance carousel
@@ -196,6 +198,7 @@ export default function HeroSection() {
             className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
               index === currentIndex ? 'opacity-100' : 'opacity-0'
             }`}
+            style={{ objectPosition: 'center center' }}
           />
         ))}
         {/* Dark warm overlay */}
@@ -231,16 +234,16 @@ export default function HeroSection() {
         </div>
       </div>
 
-      {/* Bottom tagline */}
-      <div className="absolute bottom-0 left-0 right-0 z-10 pb-24 text-center">
+      {/* Bottom tagline - positioned above scroll indicator */}
+      <div className="absolute bottom-36 left-0 right-0 z-10 text-center">
         <p
           ref={subtitleRef}
           style={{
-            color: 'color-mix(in srgb, var(--text-light) 60%, transparent)',
+            color: 'color-mix(in srgb, var(--text-light) 70%, transparent)',
             fontFamily: 'var(--font-heading)',
-            fontSize: '12px',
+            fontSize: '13px',
             fontWeight: 400,
-            letterSpacing: '0.4em',
+            letterSpacing: '0.35em',
             textTransform: 'uppercase',
           }}
         >
@@ -248,9 +251,9 @@ export default function HeroSection() {
         </p>
       </div>
 
-      {/* Carousel indicators */}
+      {/* Carousel indicators - positioned below tagline */}
       {slides.length > 1 && (
-        <div className="absolute bottom-32 left-1/2 -translate-x-1/2 z-20 flex gap-2">
+        <div className="absolute bottom-28 left-1/2 -translate-x-1/2 z-20 flex gap-2">
           {slides.map((_, index) => (
             <button
               key={index}
@@ -266,27 +269,17 @@ export default function HeroSection() {
         </div>
       )}
 
-      {/* Scroll indicator */}
+      {/* Scroll indicator - at bottom */}
       <div
         ref={indicatorRef}
-        className="absolute bottom-10 left-1/2 z-10"
+        className="absolute bottom-6 left-1/2 z-10"
         style={{ transform: 'translateX(-50%)' }}
       >
-        <div className="flex flex-col items-center gap-3">
-          <span
-            style={{
-              color: 'color-mix(in srgb, var(--text-light) 40%, transparent)',
-              fontSize: '10px',
-              letterSpacing: '0.2em',
-              textTransform: 'uppercase',
-            }}
-          >
-            Khám phá
-          </span>
+        <div className="flex flex-col items-center gap-2">
           <div
             style={{
               width: '1px',
-              height: '50px',
+              height: '40px',
               background: 'linear-gradient(to bottom, color-mix(in srgb, var(--color-primary) 60%, transparent), transparent)',
             }}
           />

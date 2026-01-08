@@ -26,6 +26,21 @@ export const deleteArticle = async (id: string) => {
   await api.delete(`/api/admin/articles/${id}`);
 };
 
+// Trash endpoints
+export const getTrashArticles = async (page = 0, size = 10) => {
+  const response = await api.get<ApiResponse<PageResponse<Article>>>(`/api/admin/articles/trash?page=${page}&size=${size}`);
+  return response.data.data;
+};
+
+export const restoreArticle = async (id: string) => {
+  const response = await api.post<ApiResponse<Article>>(`/api/admin/articles/${id}/restore`);
+  return response.data.data;
+};
+
+export const permanentDeleteArticle = async (id: string) => {
+  await api.delete(`/api/admin/articles/${id}/permanent`);
+};
+
 export const convertHtmlToMarkdown = async (html: string): Promise<string> => {
   const response = await api.post<ApiResponse<{ markdown: string }>>('/api/admin/articles/convert-html', { html });
   return response.data.data.markdown;
