@@ -80,22 +80,23 @@ export default function EditorialBanner() {
           />
         </div>
 
-        {/* Content Layout - Top label + Bottom title/button */}
-        <div className="absolute inset-0 flex flex-col items-center justify-between py-12 md:py-16">
-          {/* Top label - "WOMEN" style */}
-          <div
-            className="px-5 py-2.5 text-[11px] tracking-[0.25em] uppercase font-medium"
-            style={{
-              backgroundColor: '#1a1a1a',
-              color: '#ffffff',
-            }}
-          >
-            {displayLabel}
+        {/* Content Layout - Center title + Bottom button */}
+        <div className="absolute inset-0 flex flex-col items-center">
+          {/* Top label - Category tag */}
+          <div className="pt-12 md:pt-16">
+            <div
+              className="px-5 py-2.5 text-[11px] tracking-[0.25em] uppercase font-medium"
+              style={{
+                backgroundColor: '#1a1a1a',
+                color: '#ffffff',
+              }}
+            >
+              {displayLabel}
+            </div>
           </div>
 
-          {/* Bottom section - Title + Button */}
-          <div className="flex flex-col items-center gap-6 md:gap-8">
-            {/* Title - "Fashion Jewellery" style */}
+          {/* Center - Banner Title (main headline) */}
+          <div className="flex-1 flex items-center justify-center px-4">
             <h2
               className="text-3xl md:text-4xl lg:text-5xl font-light tracking-wide text-center"
               style={{
@@ -105,8 +106,10 @@ export default function EditorialBanner() {
             >
               {displayTitle}
             </h2>
+          </div>
 
-            {/* Shop Now Button - Gucci style */}
+          {/* Bottom - CTA Button */}
+          <div className="pb-12 md:pb-16">
             <button
               className="px-10 py-4 text-[11px] tracking-[0.2em] uppercase font-medium border border-white text-white
                          transition-all duration-300 ease-out

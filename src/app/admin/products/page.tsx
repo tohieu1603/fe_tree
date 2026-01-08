@@ -555,7 +555,7 @@ export default function ProductsPage() {
                     size="large"
                     min={0}
                     formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                    parser={value => value?.replace(/\$\s?|(,*)/g, '') as unknown as number}
+                    parser={(value) => (value?.replace(/\$\s?|(,*)/g, '') || '0') as unknown as 0}
                     placeholder="0"
                   />
                 </Form.Item>
@@ -567,7 +567,7 @@ export default function ProductsPage() {
                     size="large"
                     min={0}
                     formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                    parser={value => value?.replace(/\$\s?|(,*)/g, '') as unknown as number}
+                    parser={(value) => (value?.replace(/\$\s?|(,*)/g, '') || '0') as unknown as 0}
                     placeholder="0"
                   />
                 </Form.Item>

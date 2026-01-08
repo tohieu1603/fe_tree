@@ -210,50 +210,48 @@ export default function HeroSection() {
         />
       </div>
 
-      {/* Centered Logo */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center z-10">
+      {/* Bottom Left Content */}
+      <div className="absolute bottom-32 left-8 md:left-16 z-10">
         <div
           ref={textRef}
-          className="will-change-transform text-center"
+          className="will-change-transform"
         >
-          {/* Main Logo - responsive font size based on text length */}
+          {/* Main Title */}
           <h1
             style={{
               color: 'var(--text-light)',
               fontFamily: 'var(--font-heading)',
-              fontSize: `min(${Math.max(8, 18 - (displayTitle.length - 2) * 1.2)}vw, ${Math.max(80, 280 - (displayTitle.length - 2) * 15)}px)`,
+              fontSize: 'clamp(2.5rem, 6vw, 5rem)',
               fontWeight: 300,
-              letterSpacing: '0.15em',
+              letterSpacing: '0.1em',
               textTransform: 'uppercase',
-              lineHeight: 0.9,
+              lineHeight: 1,
               userSelect: 'none',
             }}
           >
             {displayTitle}
           </h1>
+          {/* Subtitle */}
+          <p
+            ref={subtitleRef}
+            className="mt-4"
+            style={{
+              color: 'color-mix(in srgb, var(--text-light) 70%, transparent)',
+              fontFamily: 'var(--font-heading)',
+              fontSize: '12px',
+              fontWeight: 400,
+              letterSpacing: '0.3em',
+              textTransform: 'uppercase',
+            }}
+          >
+            {displaySubtitle}
+          </p>
         </div>
       </div>
 
-      {/* Bottom tagline - positioned above scroll indicator */}
-      <div className="absolute bottom-36 left-0 right-0 z-10 text-center">
-        <p
-          ref={subtitleRef}
-          style={{
-            color: 'color-mix(in srgb, var(--text-light) 70%, transparent)',
-            fontFamily: 'var(--font-heading)',
-            fontSize: '13px',
-            fontWeight: 400,
-            letterSpacing: '0.35em',
-            textTransform: 'uppercase',
-          }}
-        >
-          {displaySubtitle}
-        </p>
-      </div>
-
-      {/* Carousel indicators - positioned below tagline */}
+      {/* Carousel indicators - bottom left, below text */}
       {slides.length > 1 && (
-        <div className="absolute bottom-28 left-1/2 -translate-x-1/2 z-20 flex gap-2">
+        <div className="absolute bottom-16 left-8 md:left-16 z-20 flex gap-2">
           {slides.map((_, index) => (
             <button
               key={index}
@@ -269,21 +267,18 @@ export default function HeroSection() {
         </div>
       )}
 
-      {/* Scroll indicator - at bottom */}
+      {/* Scroll indicator - bottom center */}
       <div
         ref={indicatorRef}
-        className="absolute bottom-6 left-1/2 z-10"
-        style={{ transform: 'translateX(-50%)' }}
+        className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10"
       >
-        <div className="flex flex-col items-center gap-2">
-          <div
-            style={{
-              width: '1px',
-              height: '40px',
-              background: 'linear-gradient(to bottom, color-mix(in srgb, var(--color-primary) 60%, transparent), transparent)',
-            }}
-          />
-        </div>
+        <div
+          style={{
+            width: '1px',
+            height: '40px',
+            background: 'linear-gradient(to bottom, color-mix(in srgb, var(--color-primary) 60%, transparent), transparent)',
+          }}
+        />
       </div>
     </section>
   );
